@@ -325,8 +325,12 @@ task userOp() {
 			driveR = vexRT[ChRY];
 
 			if (flipLatch.out) {
+				driveL ^= driveR;
+				driveR ^= driveL;
+				driveL ^= driveR;
+
 				driveL *= -1;
-				driveY *= -1;
+				driveR *= -1;
 			}
 		}
 		else {
