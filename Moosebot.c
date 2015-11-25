@@ -31,17 +31,17 @@
 #define RKCOMP_DEBUG_DRIVER_COND vexRT[Btn8D]
 #define RKCOMP_DEBUG_RESTART_COND vexRT[Btn6U]
 
-#include "rkUtil003.h"
+#include "rkUtil/lib.h"
 
-#include "rkLogic/dlatch001.h"
+#include "rkLogic/dlatch.h"
 
-#include "rkControl/base002.h"
-#include "rkControl/diff003.h"
-#include "rkControl/kalman001.h"
-#include "rkControl/tbh006.h"
-#include "rkControl/tbhController002.h"
+#include "rkControl/base.h"
+#include "rkControl/diff.h"
+#include "rkControl/kalman.h"
+#include "rkControl/tbh.h"
+#include "rkControl/tbhController.h"
 
-#include "rkCompetition003a.h"
+#include "rkCompetition/lib.h"
 
 #define USE_PRELOAD_AUTON //Comment to start the intake immediately in auton
 
