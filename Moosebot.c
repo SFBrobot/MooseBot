@@ -57,6 +57,33 @@ KFlt fly2Flt;
 Tbh flyTbh, liftTbh;
 TbhController flyCtl, liftCtl;
 
+typedef union Converter {
+	float fVal;
+	int nVal;
+} Converter;
+
+Converter converter;
+
+const int fracMask = (1 << 23) - 1,
+	expMask = (1 << 8) - 1;
+
+int getFloatFrac(Converter conv) {
+	int frac = conv & fracMask;
+	return conv.nVal >> 31 ? -frac : frac;
+}
+
+int getFloatExp(Converter conv) {
+	return conv.nVal >> 23 & expMask;
+}
+
+void datalogAddFloatWithTimeStamp(int col, float val, Converter conv) {
+	conv.fVal = val;
+	datalogDataGroupStart();
+	datalogAddValue(col, conv.nVal);
+	datalogAddValue(col + 1, getFloatExp(conv));
+	datalogDataGroupEnd();
+}
+
 void lcdDispPwr(bool doUseLRPwr) {
 	if (doUseLRPwr) {
 		displayLCDCenteredString(0, "Long  Power:");
@@ -85,6 +112,9 @@ task lcd() {
 
 	while (true) {
 		time = nSysTime;
+
+		displayLCDNumber(0, 0, sizeof(int));
+		goto waitContinue;
 
 		if (nImmediateBatteryLevel < battThresh) {
 			if ((flashTs - time) >= 500) {
@@ -327,6 +357,8 @@ void init() {
   initTbhController(&liftCtl, &liftTbh, false);
 
   initKFlt(&fly2Flt, 1);
+
+  datalogClear();
 }
 
 void updateCtl(float dt) {
@@ -344,6 +376,8 @@ void updateCtl(float dt) {
 
 	if (liftTbh.doUpdate)
 		motor[lift] = updateTbh(&liftTbh, -liftDiff.out, -lift2Diff.out, dt);
+
+	datalogAddFloatWithTimeStamp(0, 0.15625, converter);
 }
 
 task auton() {
