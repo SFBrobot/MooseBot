@@ -64,24 +64,9 @@ typedef union Converter {
 
 Converter converter;
 
-const int fracMask = (1 << 23) - 1,
-	expMask = (1 << 8) - 1;
-
-int getFloatFrac(Converter conv) {
-	int frac = conv & fracMask;
-	return conv.nVal >> 31 ? -frac : frac;
-}
-
-int getFloatExp(Converter conv) {
-	return conv.nVal >> 23 & expMask;
-}
-
-void datalogAddFloatWithTimeStamp(int col, float val, Converter conv) {
+void datalogAddFloat(int col, float val, Converter conv) {
 	conv.fVal = val;
-	datalogDataGroupStart();
 	datalogAddValue(col, conv.nVal);
-	datalogAddValue(col + 1, getFloatExp(conv));
-	datalogDataGroupEnd();
 }
 
 void lcdDispPwr(bool doUseLRPwr) {
@@ -113,11 +98,8 @@ task lcd() {
 	while (true) {
 		time = nSysTime;
 
-		displayLCDNumber(0, 0, sizeof(int));
-		goto waitContinue;
-
 		if (nImmediateBatteryLevel < battThresh) {
-			if ((flashTs - time) >= 500) {
+			if ((time - flashTs) >= 500) {
 				flash = !flash;
 				flashTs = time;
 			}
@@ -368,16 +350,20 @@ void updateCtl(float dt) {
 	updateDiff(&liftDiff, SensorValue[liftEnc], dt);
 	updateDiff(&lift2Diff, liftDiff.out, dt);
 
-	updateKFlt(&fly2Flt, fly2Diff.out, dt);
+	//updateKFlt(&fly2Flt, fly2Diff.out, dt);
 
 	if (flyTbh.doUpdate)
 		motor[blFly] = motor[tlFly] =
-			motor[brFly] = motor[trFly] = updateTbh(&flyTbh, flyDiff.out, fly2Flt.out, dt);
+			motor[brFly] = motor[trFly] = updateTbh(&flyTbh, flyDiff.out, fly2Diff.out, dt);
 
 	if (liftTbh.doUpdate)
 		motor[lift] = updateTbh(&liftTbh, -liftDiff.out, -lift2Diff.out, dt);
 
-	datalogAddFloatWithTimeStamp(0, 0.15625, converter);
+	datalogDataGroupStart();
+	datalogAddFloat(0, flyDiff.out, converter);
+	datalogAddFloat(1, fly2Diff.out, converter);
+	datalogAddFloat(2, flyTbh.out, converter);
+	datalogDataGroupEnd();
 }
 
 task auton() {
