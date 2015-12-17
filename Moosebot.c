@@ -53,9 +53,10 @@ const float autonFlyPwr = 830,
 	accelThresh = 100;
 
 ADiff flyDiff, fly2Diff, liftDiff, lift2Diff;
-KFlt fly2Flt;
+KFlt flyFlt, fly2Flt;
 Tbh flyTbh, liftTbh;
 TbhController flyCtl, liftCtl;
+DLatch flyRunLatch;
 
 typedef union Converter {
 	float fVal;
@@ -80,20 +81,32 @@ void lcdDispPwr(bool doUseLRPwr) {
 	}
 }
 
+#define PWR_BTN_DOWN ((nLCDButtons & kButtonLeft) || vexRT[Btn7D])
+#define PWR_BTN_UP ((nLCDButtons & kButtonRight) || vexRT[Btn7U])
+
+#define PWR_BTN_LRMODE vexRT[Btn7L]
+#define PWR_BTN_SRMODE vexRT[Btn7R]
+
 task lcd() {
 	const float flyPwrIncrement = 5;
 	const word battThresh = 7800;
+	const long pwrBtnsDelayInterval = 750,
+		pwrBtnsRepeatInterval = 100,
+		dispPwrTimeout = 1000;
 
 	bool dispPwr = false,
 		doUseLRPwr = true,
 		flash = false,
-		forceBattWarning = true;
+		flashLeds,
+		forceBattWarning = true,
+		pwrBtnsDown,
+		pwrBtnsRepeating;
 
 	float pwrBtns;
-	long time = nSysTime, flashTs = time, dispPwrTs = nSysTime;
+	long time = nSysTime, flashTs = time, dispPwrTs = time, pwrBtnTs = time;
 	string str;
 
-	DLatch dismissWarningLatch;
+	DLatch dismissWarningLatch, pwrBtnLatch, pwrBtnLRModeLatch, pwrBtnSRModeLatch;
 
 	while (true) {
 		time = nSysTime;
@@ -104,42 +117,85 @@ task lcd() {
 				flashTs = time;
 			}
 
-			if (rkBotDisabled || rkAutonMode || forceBattWarning) {
-				bLCDBacklight = flash;
-
-				clearLCD();
-
-				if (flash) displayLCDCenteredString(0, "BATTERY WARNING");
-
-				sprintBatt(str);
-				displayLCDString(1, 0, str);
-
-				if (fallingEdge(&dismissWarningLatch, nLCDButtons || (abs(vexRT[AccelY]) > 63))) forceBattWarning = false;
-
-				goto waitContinue;
-			}
+			flashLeds = true;
+		}
+		else {
+			SensorValue[redLed] =
+				SensorValue[yellowLed] =
+				SensorValue[greenLed] = 0;
 		}
 
-		if (rkBotDisabled || rkAutonMode) {
-			bLCDBacklight = !rkBotDisabled;
+		clearLCD();
 
-			clearLCD();
+		if (nLCDButtons & kButtonCenter) {
+			bLCDBacklight = true;
+
+			displayLCDCenteredString(0, "Battery:");
+
+			sprintBatt(str);
+
+			displayLCDString(1, 0, str);
+		}
+		else if (nImmediateBatteryLevel < battThresh && (rkBotDisabled || rkAutonMode || forceBattWarning)) {
+			bLCDBacklight = flash;
+
+			if (flash) displayLCDCenteredString(0, "BATTERY WARNING");
+
+			sprintBatt(str);
+			displayLCDString(1, 0, str);
+
+			if (fallingEdge(&dismissWarningLatch, nLCDButtons || (abs(vexRT[AccelY]) > 63))) forceBattWarning = false;
+		}
+		else if (rkBotDisabled) {
+			bLCDBacklight = false;
 
 			displayLCDCenteredString(0, "Moosebot Mk. II");
 			displayLCDCenteredString(1, "4800Buckets");
 		}
-		else {
+		else if (rkAutonMode) {
 			bLCDBacklight = true;
 
-			pwrBtns = twoWay((nLCDButtons & kButtonLeft) || vexRT[Btn7D], -flyPwrIncrement, (nLCDButtons & kButtonRight) || vexRT[Btn7U], flyPwrIncrement);
+			displayLCDCenteredString(0, "BUCKETS MODE");
+			displayLCDCenteredString(1, "ENGAGED");
+		}
+		else { //User op mode
+			bLCDBacklight = true;
 
-			if (pwrBtns) {
+			pwrBtnsDown = PWR_BTN_DOWN ^ PWR_BTN_UP;
+			risingEdge(&pwrBtnLatch, pwrBtnsDown);
 
+			if (pwrBtnsDown || (PWR_BTN_LRMODE ^ PWR_BTN_SRMODE)) dispPwrTs = time;
+
+			if (risingEdge(&pwrBtnLRModeLatch, PWR_BTN_LRMODE)) doUseLRPwr = true;
+			if (risingEdge(&pwrBtnSRModeLatch, PWR_BTN_SRMODE)) doUseLRPwr = false;
+
+			if (pwrBtnsDown) {
+				dispPwrTs = time;
+
+				if (pwrBtnLatch.out || (time - pwrBtnTs >= (pwrBtnsRepeating ? pwrBtnsRepeatInterval : pwrBtnsDelayInterval))) {
+					pwrBtnTs = time;
+					if (!pwrBtnsRepeating) pwrBtnsRepeating = true;
+
+					pwrBtns = twoWay((nLCDButtons & kButtonLeft) || vexRT[Btn7D], -flyPwrIncrement, (nLCDButtons & kButtonRight) || vexRT[Btn7U], flyPwrIncrement);
+
+					if (doUseLRPwr) flyLRPwr += pwrBtns;
+					else flySRPwr += pwrBtns;
+				}
 			}
 
-			if (flyTbh.doRun) {
+			if (time - dispPwrTs <= dispPwrTimeout) {
+				if (doUseLRPwr) {
+					displayLCDCenteredString(0, "Long  Power:");
+					displayLCDNumber(1, 0, flyLRPwr);
+				}
+				else {
+					displayLCDCenteredString(0, "Short Power:");
+					displayLCDNumber(1, 0, flySRPwr);
+				}
+			}
+			else if (flyTbh.doRun) {
 				sprintf(str, "% 07.2f  % 07.2f",
-					fmaxf(-999.99, fminf(999.99, flyDiff.out)),
+					fmaxf(-999.99, fminf(999.99, flyFlt.out)),
 					fmaxf(-999.99, fminf(999.99, flyTbh.err)));
 				displayLCDString(0, 0, str);
 
@@ -147,6 +203,18 @@ task lcd() {
 					fmaxf(-999.99, fminf(999.99, fly2Flt.out)),
 					fmaxf(-999.99, fminf(999.99, flyTbh.out)));
 				displayLCDString(1, 0, str);
+
+				flashLeds = false;
+
+				SensorValue[redLed] =
+					SensorValue[yellowLed] =
+					SensorValue[greenLed] = 0;
+
+				if (isTbhInThresh(&flyTbh, velThresh)) {
+					if (isTbhDerivInThresh(&flyTbh, accelThresh)) SensorValue[greenLed] = 1;
+					else  SensorValue[yellowLed] = 1;
+				}
+				else SensorValue[redLed] = 1;
 			}
 			else {
 				sprintf(str, "%-8s%8s", "Speed", "Error");
@@ -157,142 +225,13 @@ task lcd() {
 			}
 		}
 
-	waitContinue:
-
-		wait1Msec(50);
-	}
-}
-
-task _lcd() {
-	string str;
-	float pwrBtns;
-	const TTimers lcdTimer = T3;
-	const float flyPwrIncrement = 5;
-	bool dispPwr = false, doUseLRPwr = true, flash = false;
-
-	const word battThresh = 7800;
-
-	while (true) {
-		if ((rkBotDisabled || rkAutonMode) && nImmediateBatteryLevel < battThresh) {
-			if (time1[lcdTimer] > 500) {
-				bLCDBacklight = flash = !flash;
-				clearTimer(lcdTimer);
-			}
+		if (flashLeds) {
+			SensorValue[redLed] =
+				SensorValue[yellowLed] =
+				SensorValue[greenLed] = flash;
 		}
 
-		if (nLCDButtons & kButtonCenter) {
-			bLCDBacklight = true;
-
-			sprintBatt(str);
-
-			clearLCD();
-			displayLCDCenteredString(0, "Battery:");
-			displayLCDString(1, 0, str);
-		}
-		else if (rkBotDisabled || rkAutonMode) {
-			clearLCD();
-
-			dispPwr = false;
-
-			if (nImmediateBatteryLevel < battThresh) {
-				sprintf(str, "%.2f Volts", nImmediateBatteryLevel / 1000.);
-
-				if (flash) displayLCDCenteredString(0, "BATTERY WARNING:");
-				displayLCDCenteredString(1, str);
-			}
-			else {
-				bLCDBacklight = flash = false;
-
-				displayLCDCenteredString(0, "Moosebot Mk. II");
-				displayLCDCenteredString(1, "4800Buckets");
-			}
-		}
-		else {
-			bLCDBacklight = true;
-
-			if (vexRT[Btn7L] ^ vexRT[Btn7R])
-				doUseLRPwr = vexRT[Btn7L];
-
-			clearLCD();
-
-			if (dispPwr && (time1[lcdTimer] < 2000 || vexRT[Btn7L] || vexRT[Btn7R])) lcdDispPwr(doUseLRPwr);
-			else {
-				if (flyTbh.doRun) {
-					sprintf(str, "% 07.2f  % 07.2f",
-						fmaxf(-999.99, fminf(999.99, flyDiff.out)),
-						fmaxf(-999.99, fminf(999.99, flyTbh.err)));
-					displayLCDString(0, 0, str);
-
-					sprintf(str, "% 07.2f  % 07.2f",
-						fmaxf(-999.99, fminf(999.99, fly2Flt.out)),
-						fmaxf(-999.99, fminf(999.99, flyTbh.out)));
-					displayLCDString(1, 0, str);
-				}
-				else {
-					sprintf(str, "%-8s%8s", "Speed", "Error");
-					displayLCDString(0, 0, str);
-
-					sprintf(str, "%-8s%8s", "Accel", "Out");
-					displayLCDString(1, 0, str);
-				}
-			}
-
-			pwrBtns = twoWay((nLCDButtons & kButtonLeft) || vexRT[Btn7D], -flyPwrIncrement, (nLCDButtons & kButtonRight) || vexRT[Btn7U], flyPwrIncrement);
-
-			if (pwrBtns != 0) {
-				dispPwr = true;
-				if (doUseLRPwr) flyLRPwr = fmaxf(0, flyLRPwr + pwrBtns);
-				else flySRPwr = fmaxf(0, flySRPwr + pwrBtns);
-
-				clearLCD();
-				lcdDispPwr(doUseLRPwr);
-
-				clearTimer(lcdTimer);
-				while(((nLCDButtons & (kButtonLeft | kButtonRight)) || vexRT[Btn7D] || vexRT[Btn7U]) && time1[lcdTimer] < 300) { wait1Msec(25); EndTimeSlice(); }
-
-				do {
-					pwrBtns = twoWay((nLCDButtons & kButtonLeft) || vexRT[Btn7D], -flyPwrIncrement, (nLCDButtons & kButtonRight) || vexRT[Btn7U], flyPwrIncrement);
-
-					if (doUseLRPwr) flyLRPwr = fmaxf(0, flyLRPwr + pwrBtns);
-					else flySRPwr = fmaxf(0, flySRPwr + pwrBtns);
-
-					clearLCD();
-					lcdDispPwr(doUseLRPwr);
-
-					wait1Msec(100);
-					EndTimeSlice();
-				} while(pwrBtns != 0);
-
-				clearTimer(lcdTimer);
-			}
-		}
-
-		SensorValue[redLed] =
-			SensorValue[yellowLed] =
-			SensorValue[greenLed] = 0;
-
-		if (rkBotDisabled) {
-			if (nImmediateBatteryLevel < battThresh) {
-				SensorValue[redLed] =
-					SensorValue[yellowLed] =
-					SensorValue[greenLed] = flash;
-			}
-
-			SensorValue[testLed] = 0;
-		}
-		else {
-			if (flyTbh.doRun) {
-				if (isTbhInThresh(&flyTbh, velThresh)) {
-					if (isTbhDerivInThresh(&flyTbh, accelThresh)) SensorValue[greenLed] = 1;
-					else  SensorValue[yellowLed] = 1;
-				}
-				else SensorValue[redLed] = 1;
-			}
-
-			SensorValue[testLed] = SensorValue[liftLim];
-		}
-
-		wait1Msec(50);
+		wait1Msec(20);
 	}
 }
 
@@ -302,6 +241,7 @@ void startFlyTbh(bool useCtl) {
 	resetDiff(&flyDiff, 0);
 	resetDiff(&fly2Diff, 0);
 
+	resetKFlt(&flyFlt, 0, 1);
 	resetKFlt(&fly2Flt, 0, 1);
 
 	if (useCtl) updateTbhController(&flyCtl, 0);
@@ -338,6 +278,7 @@ void init() {
   initTbhController(&flyCtl, &flyTbh, false);
   initTbhController(&liftCtl, &liftTbh, false);
 
+  initKFlt(&flyFlt, 1);
   initKFlt(&fly2Flt, 1);
 
   datalogClear();
@@ -350,11 +291,26 @@ void updateCtl(float dt) {
 	updateDiff(&liftDiff, SensorValue[liftEnc], dt);
 	updateDiff(&lift2Diff, liftDiff.out, dt);
 
-	//updateKFlt(&fly2Flt, fly2Diff.out, dt);
+	updateKFlt(&flyFlt, flyDiff.out, dt);
+	updateKFlt(&fly2Flt, fly2Diff.out, dt);
+
+	if (risingEdge(&flyRunLatch, flyTbh.doUpdate)) {
+		resetKFlt(&flyFlt, flyDiff.out, 1);
+		resetKFlt(&fly2Flt, fly2Diff.out, 1);
+	}
+
+	if (flyDiff.out == 0) {
+		flyFlt.errCovar = 10;
+		fly2Flt.errCovar = 10;
+	}
+	else {
+		flyFlt.errCovar = 1;
+		fly2Flt.errCovar = 1;
+	}
 
 	if (flyTbh.doUpdate)
 		motor[blFly] = motor[tlFly] =
-			motor[brFly] = motor[trFly] = updateTbh(&flyTbh, flyDiff.out, fly2Diff.out, dt);
+			motor[brFly] = motor[trFly] = updateTbh(&flyTbh, flyFlt.out, fly2Flt.out, dt);
 
 	if (liftTbh.doUpdate)
 		motor[lift] = updateTbh(&liftTbh, -liftDiff.out, -lift2Diff.out, dt);
