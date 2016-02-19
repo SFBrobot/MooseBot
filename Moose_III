@@ -34,7 +34,7 @@ Tbh flyTbh;
 TbhController flyCtl;
 
 float flyLRPwr = 850,
-	flyMRPwr = 700,
+	//flyMRPwr = 700,
 	flySRPwr = 500;
 
 void startFlyTbh(bool useCtl) {
@@ -127,27 +127,28 @@ task userOp() {
 		motor[roller] = motor[lift] =
 			joyDigi2(Btn6U, 127, Btn6D, -127);
 
-		//if (risingEdge(&flyLRLatch, vexRT[Btn5U]) !=
-		//	risingEdge(&flySRLatch, vexRT[Btn5D])) {
+		if (risingEdge(&flyLRLatch, vexRT[Btn5U]) !=
+			risingEdge(&flySRLatch, vexRT[Btn5D])) {
 
-		//	if (flyLRLatch.out) flyDir = flyDir == 1 ? 0 : 1;
-		//	else if(flySRLatch.out) flyDir = flyDir == 2 ? 0 : 2;
-		//}
+			if (flyLRLatch.out) flyDir = flyDir == 1 ? 0 : 1;
+			else flyDir = flyDir == 2 ? 0 : 2;
+		}
 			
-		if(risingEdge(&flyLRLatch, vexRT[Btn5U]))
-			flyDir++;
-		if(flyDir > 3)
-			flyDir = 0;
+		//if(risingEdge(&flyLRLatch, vexRT[Btn5U]))
+		//	flyDir++;
+		//if(flyDir > 3)
+		//	flyDir = 0;
 
 		switch (flyDir) {
 		case 1:
 			flyPwr = flyLRPwr;
 			break;
 		case 2:
-			flyPwr = flyMRPwr;
+		//	flyPwr = flyMRPwr;
+		//	break;
+		//case 3:
+		//	flyPwr = flySRPwr;
 			break;
-		case 3:
-			flyPwr = flySRPwr;
 		default:
 			flyPwr = 0;
 			break;
