@@ -20,11 +20,30 @@
 #define RKCOMP_LCD //Enable LCD stuff in rkCompetition
 //#define RKCOMP_DEBUG //Comment to disable debug mode
 
-#define RKCOMP_DEBUG_MENU_COND vexRT[Btn8R]
+#define RKCOMP_DEBUG_MENU_COND vexRT[Btn8L]
 #define RKCOMP_DEBUG_DISABLE_COND vexRT[Btn8U]
-#define RKCOMP_DEBUG_AUTON_COND vexRT[Btn8L]
+#define RKCOMP_DEBUG_AUTON_COND vexRT[Btn8R]
 #define RKCOMP_DEBUG_DRIVER_COND vexRT[Btn8D]
 #define RKCOMP_DEBUG_RESTART_COND vexRT[Btn6U]
+
+#define FLY_LR_BTN vexRT[Btn7U]
+#define FLY_MR_BTN vexRT[Btn7L]
+#define FLY_SR_BTN vexRT[Btn7D]
+#define FLY_OFF_BTN vexRT[Btn7R]
+
+#define FLY_BTNS (FLY_LR_BTN || FLY_MR_BTN || FLY_SR_BTN || FLY_OFF_BTN)
+
+#define PWR_BTN_DOWN ((nLCDButtons & kButtonLeft) || vexRT[Btn5D])
+#define PWR_BTN_UP ((nLCDButtons & kButtonRight) || vexRT[Btn5U])
+
+#define DRIVE_TANK_BTN false //vexRT[Btn8L]
+#define DRIVE_FLIP_BTN vexRT[Btn8R]
+
+#define INTAKE_FEEDIN_BTN vexRT[Btn8U]
+#define INTAKE_FEEDOUT_BTN vexRT[Btn8D]
+
+#define LIFT_RAISE_BTN vexRT[Btn6U]
+#define LIFT_LOWER_BTN vexRT[Btn6D]
 
 #include "rkUtil/lib.h"
 
@@ -63,16 +82,6 @@ ADiff flyDiff, fly2Diff;
 RAFlt flyDispFlt, fly2Flt;
 Tbh flyTbh;
 TbhController flyCtl;
-
-#define FLY_LR_BTN vexRT[Btn7U]
-#define FLY_MR_BTN vexRT[Btn7L]
-#define FLY_SR_BTN vexRT[Btn7D]
-#define FLY_OFF_BTN vexRT[Btn7R]
-
-#define FLY_BTNS (FLY_LR_BTN || FLY_MR_BTN || FLY_SR_BTN || FLY_OFF_BTN)
-
-#define PWR_BTN_DOWN ((nLCDButtons & kButtonLeft) || vexRT[Btn5D])
-#define PWR_BTN_UP ((nLCDButtons & kButtonRight) || vexRT[Btn5U])
 
 task lcd() {
 	const float flyPwrIncrement = 5;
@@ -326,10 +335,10 @@ task userOp() {
 	resetDLatch(&flyOffLatch, 0);
 
 	while (true) {
-		risingBistable(&flipLatch, vexRT[Btn8D]);
+		risingBistable(&flipLatch, DRIVE_FLIP_BTN);
 
 		//TODO: Make this better
-		if (risingBistable(&tankLatch, vexRT[Btn8L] && false)) {
+		if (risingBistable(&tankLatch, DRIVE_TANK_BTN)) {
 			driveL = vexRT[ChLY];
 			driveR = vexRT[ChRY];
 
@@ -373,10 +382,10 @@ task userOp() {
 		updateTbhController(&flyCtl, flyPwr[flyDir]);
 
 		motor[intake] =
-			joyDigi2(Btn6U, 127, Btn8U, -127);
+			joyDigi2(INTAKE_FEEDIN_BTN, 127, INTAKE_FEEDOUT_BTN, -127);
 
 		motor[lift] =
-			joyDigi2(Btn6U, 127, Btn6D, -127);
+			joyDigi2(LIFT_RAISE_BTN, 127, LIFT_LOWER_BTN, -127);
 
 		wait1Msec(25);
 	}
