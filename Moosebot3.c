@@ -137,7 +137,7 @@ task lcd() {
 		else if (rkBotDisabled) {
 			bLCDBacklight = false;
 
-			displayLCDCenteredString(0, "Moosebot Mk. II");
+			displayLCDCenteredString(0, "Moosebot Mk. III");
 			displayLCDCenteredString(1, "4800Buckets");
 		}
 		else if (rkAutonMode) {
