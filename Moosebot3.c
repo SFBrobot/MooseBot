@@ -77,9 +77,9 @@ const float autonFlyPwr = 830,
 	velThresh = 75,
 	accelThresh = 150;
 
-ADiff flyDiff, fly2Diff;
+Diff flyDiff, fly2Diff;
 //KFlt fly2Flt;
-RAFlt flyDispFlt, fly2Flt;
+RAFlt flyDispFlt, flyFlt;
 Tbh flyTbh;
 TbhController flyCtl;
 
@@ -193,7 +193,7 @@ task lcd() {
 				displayLCDString(0, 0, str);
 
 				sprintf(str, "% 07.2f  % 07.2f",
-					fmaxf(-999.99, fminf(999.99, fly2Flt.out)),
+					fmaxf(-999.99, fminf(999.99, fly2Diff.out)),
 					fmaxf(-999.99, fminf(999.99, flyTbh.out)));
 				displayLCDString(1, 0, str);
 
@@ -234,7 +234,7 @@ void startFlyTbh(bool useCtl) {
 	resetDiff(&flyDiff, 0);
 	resetDiff(&fly2Diff, 0);
 
-	resetRAFlt(&fly2Flt, 0);
+	resetRAFlt(&flyFlt, 0);
 
 	if (useCtl) updateTbhController(&flyCtl, 0);
 	else setTbhDoRun(&flyTbh, true);
@@ -249,9 +249,9 @@ void stopCtls() {
 }
 
 #define FLY_DISP_FLT_LEN 10
-#define FLY2_FLT_LEN 5
+#define FLY_FLT_LEN 5
 float flyDispFltBuf[FLY_DISP_FLT_LEN],
-  flyFltBuf[FLY2_FLT_LEN];
+  flyFltBuf[FLY_FLT_LEN];
 
 void init() {
   ctlLoopInterval = 50;
@@ -261,20 +261,20 @@ void init() {
   initTbhController(&flyCtl, &flyTbh, false);
 
   initRAFlt(&flyDispFlt, flyDispFltBuf, FLY_DISP_FLT_LEN);
-  initRAFlt(&fly2Flt, flyFltBuf, FLY2_FLT_LEN);
+  initRAFlt(&flyFlt, flyFltBuf, FLY_FLT_LEN);
 }
 
 void updateCtl(float dt) {
 	updateDiff(&flyDiff, -SensorValue[flyEnc], dt);
-	updateDiff(&fly2Diff, flyDiff.out, dt);
-
+	updateRAFlt(&flyFlt, flyDiff.out);
 	updateRAFlt(&flyDispFlt, flyDiff.out);
-	updateRAFlt(&fly2Flt, fly2Diff.out);
+
+	updateDiff(&fly2Diff, flyDiff.out, dt);
 
 	if (flyTbh.doUpdate)
 		motor[lFly] =
 			motor[rFly] =
-			updateTbh(&flyTbh, flyDiff.out, fly2Flt.out, dt);
+			updateTbh(&flyTbh, flyFlt.out, fly2Diff.out, dt);
 }
 
 task auton() {
