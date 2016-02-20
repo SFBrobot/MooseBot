@@ -41,7 +41,7 @@
 
 #include "rkCompetition/lib.h"
 
-//#define USE_PRELOAD_AUTON //Comment to start the intake immediately in auton
+#define USE_PRELOAD_AUTON //Comment to start the intake immediately in auton
 
 int flyDir;
 
@@ -240,9 +240,9 @@ void stopCtls() {
 }
 
 #define FLY_DISP_FLT_LEN 10
-#define FLY_FLT_LEN 5
+#define FLY2_FLT_LEN 5
 float flyDispFltBuf[FLY_DISP_FLT_LEN],
-  flyFltBuf[FLY_FLT_LEN];
+  flyFltBuf[FLY2_FLT_LEN];
 
 void init() {
   ctlLoopInterval = 50;
@@ -251,13 +251,15 @@ void init() {
 
   initTbhController(&flyCtl, &flyTbh, false);
 
-  initRAFlt(&fly2Flt, flyFltBuf, FLY_FLT_LEN);
+  initRAFlt(&flyDispFlt, flyDispFltBuf, FLY_DISP_FLT_LEN);
+  initRAFlt(&fly2Flt, flyFltBuf, FLY2_FLT_LEN);
 }
 
 void updateCtl(float dt) {
 	updateDiff(&flyDiff, -SensorValue[flyEnc], dt);
 	updateDiff(&fly2Diff, flyDiff.out, dt);
 
+	updateRAFlt(&flyDispFlt, flyDiff.out);
 	updateRAFlt(&fly2Flt, fly2Diff.out);
 
 	if (flyTbh.doUpdate)
