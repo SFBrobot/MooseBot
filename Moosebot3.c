@@ -1,6 +1,9 @@
 #pragma config(UART_Usage, UART1, uartVEXLCD, baudRate19200, IOPins, None, None)
 #pragma config(UART_Usage, UART2, uartNotUsed, baudRate4800, IOPins, None, None)
 #pragma config(I2C_Usage, I2C1, i2cSensors)
+#pragma config(Sensor, dgtl1,  redLed,         sensorLEDtoVCC)
+#pragma config(Sensor, dgtl2,  yellowLed,      sensorLEDtoVCC)
+#pragma config(Sensor, dgtl3,  greenLed,       sensorLEDtoVCC)
 #pragma config(Sensor, I2C_1,  flyEnc,         sensorQuadEncoderOnI2CPort,    , AutoAssign )
 #pragma config(Motor,  port1,           intake,        tmotorVex393HighSpeed_HBridge, openLoop)
 #pragma config(Motor,  port2,           brWheel,       tmotorVex393HighSpeed_MC29, openLoop, reversed, driveRight)
@@ -32,6 +35,7 @@
 #include "rkControl/base.h"
 #include "rkControl/diff.h"
 #include "rkControl/kalman.h"
+#include "rkControl/rollAvg.h"
 #include "rkControl/tbh.h"
 #include "rkControl/tbhController.h"
 
@@ -41,37 +45,39 @@
 
 int flyDir;
 
-float flyPwr[4] = {0, 600, 700, 950},
-	kI = .5,
-	kD = .05;
+float flyPwr[4] = {0, 600, 700, 835};
 
-string flyPwrNames[4] = {
+const string flyPwrNames[4] = {
 	"Off",
 	"Short Power",
 	"Mid Power",
 	"Long Power",
 };
 
-const float autonFlyPwr = 950,
+const float autonFlyPwr = 835,
 	velThresh = 50,
 	accelThresh = 100;
 
-ADiff flyDiff, fly2Diff, liftDiff, lift2Diff;
-KFlt fly2Flt;
+ADiff flyDiff, fly2Diff;
+//KFlt fly2Flt;
+RAFlt flyDispFlt, fly2Flt;
 Tbh flyTbh;
 TbhController flyCtl;
 
-void lcdDispPwr() {
-	if (!flyDir) return;
+#define FLY_LR_BTN vexRT[Btn7U]
+#define FLY_MR_BTN vexRT[Btn7L]
+#define FLY_SR_BTN vexRT[Btn7D]
+#define FLY_OFF_BTN vexRT[Btn7R]
 
-	displayLCDCenteredString(0, flyPwrNames[flyDir]);
-	displayLCDNumber(1, 0, flyPwr[flyDir]);
-}
+#define FLY_BTNS (FLY_LR_BTN || FLY_MR_BTN || FLY_SR_BTN || FLY_OFF_BTN)
+
+#define PWR_BTN_DOWN ((nLCDButtons & kButtonLeft) || vexRT[Btn5D])
+#define PWR_BTN_UP ((nLCDButtons & kButtonRight) || vexRT[Btn5U])
 
 task lcd() {
 	const float flyPwrIncrement = 5;
 	const word battThresh = 7800;
-	const long pwrBtnsDelayInterval = 750,
+	const long pwrBtnsDelayInterval = 250,
 		pwrBtnsRepeatInterval = 100,
 		dispPwrTimeout = 1000;
 
@@ -81,13 +87,14 @@ task lcd() {
 		flashLeds,
 		forceBattWarning = true,
 		pwrBtnsDown,
+		pwrBtnsDelayed,
 		pwrBtnsRepeating;
 
 	float pwrBtns;
 	long time = nSysTime, flashTs = time, dispPwrTs = time, pwrBtnTs = time;
 	string str;
 
-	DLatch dismissWarningLatch, pwrBtnLatch, pwrBtnLRModeLatch, pwrBtnSRModeLatch;
+	DLatch dismissWarningLatch, pwrBtnLatch;
 
 	while (true) {
 		time = nSysTime;
@@ -145,38 +152,34 @@ task lcd() {
 			pwrBtnsDown = PWR_BTN_DOWN ^ PWR_BTN_UP;
 			risingEdge(&pwrBtnLatch, pwrBtnsDown);
 
-			if (pwrBtnsDown || (PWR_BTN_LRMODE ^ PWR_BTN_SRMODE)) dispPwrTs = time;
-
-			if (risingEdge(&pwrBtnLRModeLatch, PWR_BTN_LRMODE)) doUseLRPwr = true;
-			if (risingEdge(&pwrBtnSRModeLatch, PWR_BTN_SRMODE)) doUseLRPwr = false;
+			if ((pwrBtnsDown || FLY_BTNS) && flyDir) dispPwrTs = time;
 
 			if (pwrBtnsDown) {
 				dispPwrTs = time;
 
 				if (pwrBtnLatch.out || (time - pwrBtnTs >= (pwrBtnsRepeating ? pwrBtnsRepeatInterval : pwrBtnsDelayInterval))) {
 					pwrBtnTs = time;
-					if (!pwrBtnsRepeating) pwrBtnsRepeating = true;
 
-					pwrBtns = twoWay((nLCDButtons & kButtonLeft) || vexRT[Btn7D], -flyPwrIncrement, (nLCDButtons & kButtonRight) || vexRT[Btn7U], flyPwrIncrement);
+					if (pwrBtnsDelayed) {
+					  if (!pwrBtnsRepeating) pwrBtnsRepeating = true;
+					}
+					else pwrBtnsDelayed = true;
 
-					if (doUseLRPwr) flyLRPwr += pwrBtns;
-					else flySRPwr += pwrBtns;
+					pwrBtns = twoWay(PWR_BTN_DOWN, -flyPwrIncrement, PWR_BTN_UP, flyPwrIncrement);
+
+					if (flyDir != 0)
+						flyPwr[flyDir] += pwrBtns;
 				}
 			}
+			else pwrBtnsDelayed = pwrBtnsRepeating = false;
 
-			if (time - dispPwrTs <= dispPwrTimeout) {
-				if (doUseLRPwr) {
-					displayLCDCenteredString(0, "Long  Power:");
-					displayLCDNumber(1, 0, flyLRPwr);
-				}
-				else {
-					displayLCDCenteredString(0, "Short Power:");
-					displayLCDNumber(1, 0, flySRPwr);
-				}
+			if (time - dispPwrTs <= dispPwrTimeout && flyDir) {
+				displayLCDCenteredString(0, flyPwrNames[flyDir]);
+				displayLCDNumber(1, 0, flyPwr[flyDir]);
 			}
 			else if (flyTbh.doRun) {
 				sprintf(str, "% 07.2f  % 07.2f",
-					fmaxf(-999.99, fminf(999.99, flyFlt.out)),
+					fmaxf(-999.99, fminf(999.99, flyDispFlt.out)),
 					fmaxf(-999.99, fminf(999.99, flyTbh.err)));
 				displayLCDString(0, 0, str);
 
@@ -222,7 +225,7 @@ void startFlyTbh(bool useCtl) {
 	resetDiff(&flyDiff, 0);
 	resetDiff(&fly2Diff, 0);
 
-	resetKFlt(&fly2Flt, 0, 1);
+	resetRAFlt(&fly2Flt, 0);
 
 	if (useCtl) updateTbhController(&flyCtl, 0);
 	else setTbhDoRun(&flyTbh, true);
@@ -230,55 +233,37 @@ void startFlyTbh(bool useCtl) {
 	SensorValue[flyEnc] = 0;
 }
 
-// void startLiftTbh(bool useCtl) {
-  // resetTbh(&liftTbh, 0);
-
-  // resetDiff(&liftDiff, 0);
-  // resetDiff(&lift2Diff, 0);
-
-  // if (useCtl) updateTbhController(&liftCtl, 0);
-  // else setTbhDoRun(&liftTbh, true);
-
-  // SensorValue[liftEnc] = 0;
-// }
-
 void stopCtls() {
 	setTbhDoRun(&flyTbh, false);
-	// setTbhDoRun(&liftTbh, false);
 
 	stopCtlLoop();
 }
 
+#define FLY_DISP_FLT_LEN 10
+#define FLY_FLT_LEN 5
+float flyDispFltBuf[FLY_DISP_FLT_LEN],
+  flyFltBuf[FLY_FLT_LEN];
+
 void init() {
   ctlLoopInterval = 50;
 
-  initTbh(&flyTbh, 7, kI, kD, 127, true);
-  //initTbh(&liftTbh, 10, .5, 0, 127, false);
+  initTbh(&flyTbh, 7, .4, .2, 127, true);
 
   initTbhController(&flyCtl, &flyTbh, false);
-  //initTbhController(&liftCtl, &liftTbh, false);
 
-  initKFlt(&fly2Flt, 1);
-
-  //startTask(_lcd);
+  initRAFlt(&fly2Flt, flyFltBuf, FLY_FLT_LEN);
 }
 
 void updateCtl(float dt) {
 	updateDiff(&flyDiff, -SensorValue[flyEnc], dt);
 	updateDiff(&fly2Diff, flyDiff.out, dt);
 
-	//updateDiff(&liftDiff, SensorValue[liftEnc], dt);
-	//updateDiff(&lift2Diff, liftDiff.out, dt);
-
-	updateKFlt(&fly2Flt, fly2Diff.out, dt);
+	updateRAFlt(&fly2Flt, fly2Diff.out);
 
 	if (flyTbh.doUpdate)
 		motor[lFly] =
 			motor[rFly] =
 			updateTbh(&flyTbh, flyDiff.out, fly2Flt.out, dt);
-
-	//if (liftTbh.doUpdate)
-		//motor[lift] = updateTbh(&liftTbh, -liftDiff.out, -lift2Diff.out, dt);
 }
 
 task auton() {
@@ -370,16 +355,16 @@ task userOp() {
 			arcade2(driveX, driveY, mlWheel, mrWheel);
 		}
 
-		if (risingEdge(&flyLRLatch, vexRT[Btn7U]))
+		if (risingEdge(&flyLRLatch, FLY_LR_BTN))
 			flyDir = 3;
 
-		if (risingEdge(&flyMRLatch, vexRT[Btn7L]))
+		if (risingEdge(&flyMRLatch, FLY_MR_BTN))
 			flyDir = 2;
 
-		if (risingEdge(&flySRLatch, vexRT[Btn7D]))
+		if (risingEdge(&flySRLatch, FLY_SR_BTN))
 			flyDir = 1;
 
-		if (risingEdge(&flyOffLatch, vexRT[Btn7R]))
+		if (risingEdge(&flyOffLatch, FLY_OFF_BTN))
 			flyDir = 0;
 
 		updateTbhController(&flyCtl, flyPwr[flyDir]);
