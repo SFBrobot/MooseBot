@@ -200,7 +200,7 @@ void updateCtl(float dt) {
 	updateDiff(&fly2Diff, flyDiff.out, dt);
 
 	//updateDiff(&liftDiff, SensorValue[liftEnc], dt);
-	updateDiff(&lift2Diff, liftDiff.out, dt);
+	//updateDiff(&lift2Diff, liftDiff.out, dt);
 
 	updateKFlt(&fly2Flt, fly2Diff.out, dt);
 
@@ -293,11 +293,6 @@ task userOp() {
 			if (flipLatch.out) driveY *= -1;
 		}
 
-		//if (risingBistable(&cutLatch, vexRT[Btn8U])) {
-		//	driveX = (word)(driveX / cutFac);
-		//	driveY = (word)(driveY / cutFac);
-		//}
-
 		if (tankLatch.out) {
 			tank4(driveL, driveR, flWheel, blWheel, frWheel, brWheel);
 			tank2(driveL, driveR, mlWheel, mrWheel);
@@ -319,30 +314,13 @@ task userOp() {
 		if (risingEdge(&flyOffLatch, vexRT[Btn7R]))
 			flyDir = 0;
 
-		//switch (flyDir) {
-		//	case 1:
-		//		updateTbhController(&flyCtl, flySRPwr);
-		//		break;
-		//	case 2:
-		//		updateTbhController(&flyCtl, flyMRPwr);
-		//		break;
-		//	case 3:
-		//		updateTbhController(&flyCtl, flyLRPwr);
-		//		break;
-		//	default:
-		//		updateTbhController(&flyCtl, 0);
-		//		break;
-		//}
-
-		//motor[intake] = motor[lift] =
-		//	joyDigi2(Btn6U, 127, Btn6D, -127);
-
 		updateTbhController(&flyCtl, flyPwr[flyDir]);
 
 		motor[intake] =
-			(vexRT[Btn6U] - vexRT[Btn8U]) * 127;
+			joyDigi2(Btn6U, 127, Btn8U, -127);
+
 		motor[lift] =
-			(vexRT[Btn6U] - vexRT[Btn6D]) * 127;
+			joyDigi2(Btn6U, 127, Btn6D, -127);
 
 		wait1Msec(25);
 	}
