@@ -54,9 +54,9 @@ const string flyPwrNames[4] = {
 	"Long Power",
 };
 
-const float autonFlyPwr = 835,
-	velThresh = 50,
-	accelThresh = 100;
+const float autonFlyPwr = 830,
+	velThresh = 75,
+	accelThresh = 150;
 
 ADiff flyDiff, fly2Diff;
 //KFlt fly2Flt;
@@ -328,7 +328,8 @@ task userOp() {
 	while (true) {
 		risingBistable(&flipLatch, vexRT[Btn8D]);
 
-		if (risingBistable(&tankLatch, vexRT[Btn8L])) {
+		//TODO: Make this better
+		if (risingBistable(&tankLatch, vexRT[Btn8L] && false)) {
 			driveL = vexRT[ChLY];
 			driveR = vexRT[ChRY];
 
