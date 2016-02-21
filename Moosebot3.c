@@ -64,7 +64,7 @@
 
 int flyDir;
 
-float flyPwr[4] = {0, 600, 700, 835};
+float flyPwr[4] = { 0, 600, 700, 830 };
 
 const string flyPwrNames[4] = {
 	"Off",
@@ -75,10 +75,10 @@ const string flyPwrNames[4] = {
 
 const float autonFlyPwr = 830,
 	velThresh = 75,
-	accelThresh = 150;
+	accelThresh = 200;
 
-ADiff flyDiff, fly2Diff;
-//KFlt fly2Flt;
+ADiff flyDiff;
+Diff fly2Diff;
 RAFlt flyDispFlt, fly2Flt;
 Tbh flyTbh;
 TbhController flyCtl;
@@ -163,7 +163,7 @@ task lcd() {
 
 			if ((pwrBtnsDown || FLY_BTNS) && flyDir) dispPwrTs = time;
 
-			if (pwrBtnsDown) {
+			if (pwrBtnsDown && FLY_BTNS) {
 				dispPwrTs = time;
 
 				if (pwrBtnLatch.out || (time - pwrBtnTs >= (pwrBtnsRepeating ? pwrBtnsRepeatInterval : pwrBtnsDelayInterval))) {
