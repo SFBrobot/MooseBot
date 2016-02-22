@@ -33,14 +33,14 @@
 
 #define FLY_BTNS (FLY_LR_BTN || FLY_MR_BTN || FLY_SR_BTN || FLY_OFF_BTN)
 
-#define PWR_BTN_DOWN ((nLCDButtons & kButtonLeft) || vexRT[Btn5D])
-#define PWR_BTN_UP ((nLCDButtons & kButtonRight) || vexRT[Btn5U])
+#define PWR_BTN_DOWN ((nLCDButtons & kButtonLeft) || vexRT[Btn5DXmtr2])
+#define PWR_BTN_UP ((nLCDButtons & kButtonRight) || vexRT[Btn5UXmtr2])
 
-#define DRIVE_TANK_BTN false //vexRT[Btn8L]
+#define DRIVE_TANK_BTN false //vexRT[Btn8L] Alexi doesn't like tank, he kept pressing the button and saying the right drive was stalled
 #define DRIVE_FLIP_BTN vexRT[Btn8R]
 
-#define INTAKE_FEEDIN_BTN vexRT[Btn8U]
-#define INTAKE_FEEDOUT_BTN vexRT[Btn8D]
+#define INTAKE_FEEDIN_BTN vexRT[Btn5U]
+#define INTAKE_FEEDOUT_BTN vexRT[Btn5D]
 
 #define LIFT_RAISE_BTN vexRT[Btn6U]
 #define LIFT_LOWER_BTN vexRT[Btn6D]
