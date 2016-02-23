@@ -33,8 +33,8 @@
 
 #define FLY_BTNS (FLY_LR_BTN || FLY_MR_BTN || FLY_SR_BTN || FLY_OFF_BTN)
 
-#define PWR_BTN_DOWN ((nLCDButtons & kButtonLeft) || vexRT[Btn8DXmtr2])
-#define PWR_BTN_UP ((nLCDButtons & kButtonRight) || vexRT[Btn8UXmtr2])
+#define PWR_BTN_DOWN ((nLCDButtons & kButtonLeft) || vexRT[Btn5DXmtr2])
+#define PWR_BTN_UP ((nLCDButtons & kButtonRight) || vexRT[Btn5UXmtr2])
 
 #define DRIVE_TANK_BTN false //vexRT[Btn8L]
 #define DRIVE_FLIP_BTN vexRT[Btn8R]
