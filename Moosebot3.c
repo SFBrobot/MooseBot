@@ -60,7 +60,6 @@
 
 #include "rkControl/base.h"
 #include "rkControl/diff.h"
-#include "rkControl/kalman.h"
 #include "rkControl/rollAvg.h"
 #include "rkControl/tbh.h"
 #include "rkControl/tbhController.h"
@@ -85,7 +84,6 @@ const float autonFlyPwr = 830,
 	accelThresh = 150;
 
 ADiff flyDiff, fly2Diff;
-//KFlt fly2Flt;
 RAFlt flyDispFlt, fly2Flt;
 Tbh flyTbh;
 TbhController flyCtl;
