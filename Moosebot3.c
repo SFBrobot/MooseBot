@@ -31,19 +31,26 @@
 #define FLY_SR_BTN vexRT[Btn7D]
 #define FLY_OFF_BTN vexRT[Btn7R]
 
-#define FLY_BTNS (FLY_LR_BTN || FLY_MR_BTN || FLY_SR_BTN || FLY_OFF_BTN)
+#define FLY_LR_BTN_2 vexRT[Btn7UXmtr2]
+#define FLY_MR_BTN_2 vexRT[Btn7LXmtr2]
+#define FLY_SR_BTN_2 vexRT[Btn7DXmtr2]
+#define FLY_OFF_BTN_2 vexRT[Btn7RXmtr2]
 
-#define PWR_BTN_DOWN ((nLCDButtons & kButtonLeft) || vexRT[Btn8D] || vexRT[Btn5DXmtr2])
-#define PWR_BTN_UP ((nLCDButtons & kButtonRight) || vexRT[Btn8U] || vexRT[Btn5UXmtr2])
+#define FLY_BTNS (FLY_LR_BTN || FLY_MR_BTN || FLY_SR_BTN || FLY_OFF_BTN || FLY_LR_BTN_2 || FLY_MR_BTN_2 || FLY_SR_BTN_2 || FLY_OFF_BTN_2)
+
+//#define PWR_BTN_DOWN ((nLCDButtons & kButtonLeft) || vexRT[Btn8D] || vexRT[Btn5DXmtr2])
+//#define PWR_BTN_UP ((nLCDButtons & kButtonRight) || vexRT[Btn8U] || vexRT[Btn5UXmtr2])
+#define PWR_BTN_DOWN ((nLCDButtons & kButtonLeft) || vexRT[Btn5D] || vexRT[Btn8DXmtr2])
+#define PWR_BTN_UP ((nLCDButtons & kButtonRight) || vexRT[Btn5U] || vexRT[Btn8UXmtr2])
 
 #define DRIVE_TANK_BTN false //vexRT[Btn8L]
 #define DRIVE_FLIP_BTN vexRT[Btn8R]
 
-#define INTAKE_FEEDIN_BTN vexRT[Btn5U]
-#define INTAKE_FEEDOUT_BTN vexRT[Btn5D]
+#define INTAKE_FEEDIN_BTN (vexRT[Btn5U] || vexRT[Btn5UXmtr2])
+#define INTAKE_FEEDOUT_BTN (vexRT[Btn5D] || vexRT[Btn5DXmtr2])
 
-#define LIFT_RAISE_BTN vexRT[Btn6U]
-#define LIFT_LOWER_BTN vexRT[Btn6D]
+#define LIFT_RAISE_BTN (vexRT[Btn5U] || vexRT[Btn6UXmtr2])
+#define LIFT_LOWER_BTN (vexRT[Btn5D] || vexRT[Btn6DXmtr2])
 
 #include "rkUtil/lib.h"
 
@@ -317,7 +324,17 @@ task userOp() {
 
 	const float cutFac = 3;
 
-	DLatch cutLatch, flipLatch, tankLatch, flyLRLatch, flyMRLatch, flySRLatch, flyOffLatch;
+	DLatch cutLatch,
+		flipLatch,
+		tankLatch,
+		flyLRLatch,
+		flyMRLatch,
+		flySRLatch,
+		flyOffLatch,
+		flyLRLatch2,
+		flyMRLatch2,
+		flySRLatch2,
+		flyOffLatch2;
 
 	word driveA, driveB;
 
@@ -333,6 +350,10 @@ task userOp() {
 	resetDLatch(&flyMRLatch, 0);
 	resetDLatch(&flySRLatch, 0);
 	resetDLatch(&flyOffLatch, 0);
+	resetDLatch(&flyLRLatch2, 0);
+	resetDLatch(&flyMRLatch2, 0);
+	resetDLatch(&flySRLatch2, 0);
+	resetDLatch(&flyOffLatch2, 0);
 
 	while (true) {
 		risingBistable(&flipLatch, DRIVE_FLIP_BTN);
@@ -367,16 +388,16 @@ task userOp() {
 			arcade2(driveX, driveY, mlWheel, mrWheel);
 		}
 
-		if (risingEdge(&flyLRLatch, FLY_LR_BTN))
+		if (risingEdge(&flyLRLatch, FLY_LR_BTN) || risingEdge(&flyLRLatch2, FLY_LR_BTN_2))
 			flyDir = 3;
 
-		if (risingEdge(&flyMRLatch, FLY_MR_BTN))
+		if (risingEdge(&flyMRLatch, FLY_MR_BTN) || risingEdge(&flyMRLatch2, FLY_MR_BTN_2))
 			flyDir = 2;
 
-		if (risingEdge(&flySRLatch, FLY_SR_BTN))
+		if (risingEdge(&flySRLatch, FLY_SR_BTN) || risingEdge(&flySRLatch2, FLY_SR_BTN_2))
 			flyDir = 1;
 
-		if (risingEdge(&flyOffLatch, FLY_OFF_BTN))
+		if (risingEdge(&flyOffLatch, FLY_OFF_BTN) || risingEdge(&flyOffLatch2, FLY_OFF_BTN_2))
 			flyDir = 0;
 
 		updateTbhController(&flyCtl, flyPwr[flyDir]);
