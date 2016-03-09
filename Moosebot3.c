@@ -256,7 +256,7 @@ float flyDispFltBuf[FLY_DISP_FLT_LEN],
 void init() {
   ctlLoopInterval = 50;
 
-  initTbh(&flyTbh, 7, .4, .2, 127, true);
+  initTbh(&flyTbh, 0, .075, .4, .2, 127, true);
 
   initTbhController(&flyCtl, &flyTbh, false);
 
