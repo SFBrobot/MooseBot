@@ -98,9 +98,7 @@ task lcd() {
     pwrBtnsRepeatInterval = 100,
     dispPwrTimeout = 1000;
 
-  bool dispPwr = false,
-    doUseLRPwr = true,
-    flash = false,
+  bool flash = false,
     flashLeds,
     forceBattWarning = true,
     pwrBtnsDown,
@@ -363,7 +361,8 @@ task userOp() {
     driveR = DRIVE_ROT;
     driveY = DRIVE_FWD;
 
-    risingBistable(&flipLatch, DRIVE_FLIP_BTN);
+    if (risingBistable(&flipLatch, DRIVE_FLIP_BTN))
+      driveY *= -1;
 
     if (risingEdge(&flipDownLatch, DRIVE_FLIP_BTN)) {
       clearSounds();
@@ -377,9 +376,6 @@ task userOp() {
         playTone(3000, 10);
       }
     }
-
-    if (flipLatch.out)
-      driveY *= -1;
 
     motor[flWheel] = motor[mlWheel] = motor[blWheel] =
       arcadeLeft(driveR, driveY);
