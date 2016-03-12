@@ -129,7 +129,20 @@ task lcd() {
   while (true) {
     time = nSysTime;
 
-    if (nImmediateBatteryLevel < battThresh) {
+    if (flyTbh.doRun) {
+      flashLeds = false;
+
+      SensorValue[redLed] =
+        SensorValue[yellowLed] =
+        SensorValue[greenLed] = 0;
+
+      if (fabs(flyDispErrFlt.out) <= velThresh) {
+        if (fabs(fly2Flt.out) <= accelThresh) SensorValue[greenLed] = 1;
+        else  SensorValue[yellowLed] = 1;
+      }
+      else SensorValue[redLed] = 1;
+    }
+    else if (nImmediateBatteryLevel < battThresh) {
       if ((time - flashTs) >= 500) {
         flash = !flash;
         flashTs = time;
@@ -225,18 +238,6 @@ task lcd() {
           fmaxf(-999.99, fminf(999.99, flyTbh.deriv)),
           fmaxf(-999.99, fminf(999.99, flyTbh.out)));
         displayLCDString(1, 0, str);
-
-        flashLeds = false;
-
-        SensorValue[redLed] =
-          SensorValue[yellowLed] =
-          SensorValue[greenLed] = 0;
-
-        if (isTbhInThresh(&flyTbh, velThresh)) {
-          if (isTbhDerivInThresh(&flyTbh, accelThresh)) SensorValue[greenLed] = 1;
-          else  SensorValue[yellowLed] = 1;
-        }
-        else SensorValue[redLed] = 1;
       }
       else {
         sprintf(str, "%-8s%8s", "Speed", "Error");
