@@ -26,6 +26,9 @@
 #define RKCOMP_DEBUG_DRIVER_COND vexRT[Btn8D]
 #define RKCOMP_DEBUG_RESTART_COND vexRT[Btn6U]
 
+#define DRIVE_ROT joyAnalog(ChRX, 5)
+#define DRIVE_FWD joyAnalog(ChLY, 5)
+
 #define FLY_LR_BTN vexRT[Btn7U]
 #define FLY_MR_BTN vexRT[Btn7L]
 #define FLY_SR_BTN vexRT[Btn7D]
@@ -41,7 +44,6 @@
 #define PWR_BTN_DOWN ((nLCDButtons & kButtonLeft) || vexRT[Btn5D] || vexRT[Btn8DXmtr2])
 #define PWR_BTN_UP ((nLCDButtons & kButtonRight) || vexRT[Btn5U] || vexRT[Btn8UXmtr2])
 
-#define DRIVE_TANK_BTN false //vexRT[Btn8L] Alexi doesn't like tank, he kept pressing the button and saying the right drive was stalled
 #define DRIVE_FLIP_BTN vexRT[Btn8R]
 
 #define FEEDIN_BTN vexRT[Btn6U]
@@ -321,8 +323,6 @@ task userOp() {
 	startFlyTbh(true);
 	startCtlLoop();
 
-	const float cutFac = 3;
-
 	DLatch cutLatch,
 		flipLatch,
 		tankLatch,
@@ -335,12 +335,7 @@ task userOp() {
 		flySRLatch2,
 		flyOffLatch2;
 
-	word driveA, driveB;
-
-#define driveX driveA
-#define driveY driveB
-#define driveL driveA
-#define driveR driveB
+	word driveR, driveY;
 
 	resetDLatch(&cutLatch, 0);
 	resetDLatch(&flipLatch, 0);
@@ -355,37 +350,24 @@ task userOp() {
 	resetDLatch(&flyOffLatch2, 0);
 
 	while (true) {
+		driveR = DRIVE_ROT;
+		driveY = DRIVE_FWD;
+
 		risingBistable(&flipLatch, DRIVE_FLIP_BTN);
 
-		//TODO: Make this better
-		if (risingBistable(&tankLatch, DRIVE_TANK_BTN)) {
-			driveL = vexRT[ChLY];
-			driveR = vexRT[ChRY];
 
 			if (flipLatch.out) {
-				driveL ^= driveR;
-				driveR ^= driveL;
-				driveL ^= driveR;
-
-				driveL *= -1;
-				driveR *= -1;
 			}
 		}
-		else {
-			driveX = vexRT[ChRX];
-			driveY = vexRT[ChLY];
 
-			if (flipLatch.out) driveY *= -1;
-		}
+		if (flipLatch.out)
+			driveY *= -1;
 
-		if (tankLatch.out) {
-			tank4(driveL, driveR, flWheel, blWheel, frWheel, brWheel);
-			tank2(driveL, driveR, mlWheel, mrWheel);
-		}
-		else {
-			arcade4(driveX, driveY, flWheel, blWheel, frWheel, brWheel);
-			arcade2(driveX, driveY, mlWheel, mrWheel);
-		}
+		motor[flWheel] = motor[mlWheel] = motor[blWheel] =
+			arcadeLeft(driveR, driveY);
+
+		motor[frWheel] = motor[mrWheel] = motor[brWheel] =
+			arcadeRight(driveR, driveY);
 
 		if (risingEdge(&flyLRLatch, FLY_LR_BTN) || risingEdge(&flyLRLatch2, FLY_LR_BTN_2))
 			flyDir = 3;
@@ -409,11 +391,6 @@ task userOp() {
 
 		wait1Msec(25);
 	}
-
-#undef driveX
-#undef driveY
-#undef driveL
-#undef driveR
 }
 
 void endUserOp() {
