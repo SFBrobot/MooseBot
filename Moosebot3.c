@@ -81,7 +81,7 @@
 
 int flyDir;
 
-float flyPwr[4] = { 0, 600, 700, 825 };
+float flyPwr[4] = { 0, 650, 700, 825 };
 
 const string flyPwrNames[4] = {
   "Off",
@@ -289,7 +289,7 @@ void init() {
 
   ctlLoopInterval = 50;
 
-  initTbh(&flyTbh, 0, 0, .5, .4, 127, true);
+  initTbh(&flyTbh, 0, .8, .4, .3, 127, true);
 
   initTbhController(&flyCtl, &flyTbh, false);
 
