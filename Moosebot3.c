@@ -73,7 +73,7 @@
 
 int flyDir;
 
-float flyPwr[4] = { 0, 600, 700, 820 };
+float flyPwr[4] = { 0, 600, 700, 825 };
 
 const string flyPwrNames[4] = {
   "Off",
@@ -82,7 +82,7 @@ const string flyPwrNames[4] = {
   "Long Power",
 };
 
-const float autonFlyPwr = 820,
+const float autonFlyPwr = 825,
 velThresh = 75,
 accelThresh = 150,
 driveFacOffs = .25,
