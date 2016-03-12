@@ -186,6 +186,7 @@ task lcd() {
 
 					if (flyDir) {
 						flyPwr[flyDir] += pwrBtns;
+						playImmediateTone(pwrBtns > 0 ? 2700 : 2000, 5);
 					}
 				}
 			}
@@ -265,6 +266,8 @@ float flyDispFltBuf[FLY_DISP_FLT_LEN],
   flyFltBuf[FLY2_FLT_LEN];
 
 void init() {
+	playSoundFile("Start.wav");
+
   ctlLoopInterval = 50;
 
   initTbh(&flyTbh, 0, 0, .5, .4, 127, true, true);
@@ -331,6 +334,7 @@ task userOp() {
 
 	DLatch cutLatch,
 		flipLatch,
+		flipDownLatch,
 		tankLatch,
 		flyLRLatch,
 		flyMRLatch,
@@ -361,8 +365,16 @@ task userOp() {
 
 		risingBistable(&flipLatch, DRIVE_FLIP_BTN);
 
+		if (risingEdge(&flipDownLatch, DRIVE_FLIP_BTN)) {
+			clearSounds();
 
 			if (flipLatch.out) {
+				playTone(3000, 10);
+				playTone(2300, 10);
+			}
+			else {
+				playTone(2300, 10);
+				playTone(3000, 10);
 			}
 		}
 
