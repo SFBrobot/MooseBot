@@ -73,18 +73,18 @@
 
 int flyDir;
 
-float flyPwr[4] = {0, 600, 700, 835};
+float flyPwr[4] = { 0, 600, 700, 820 };
 
 const string flyPwrNames[4] = {
-	"Off",
-	"Short Power",
-	"Mid Power",
-	"Long Power",
+  "Off",
+  "Short Power",
+  "Mid Power",
+  "Long Power",
 };
 
-const float autonFlyPwr = 830,
-	velThresh = 75,
-	accelThresh = 150;
+const float autonFlyPwr = 820,
+velThresh = 75,
+accelThresh = 150;
 
 ADiff flyDiff, fly2Diff;
 RAFlt flyDispFlt, flyDispErrFlt, fly2Flt;
@@ -92,185 +92,185 @@ Tbh flyTbh;
 TbhController flyCtl;
 
 task lcd() {
-	const float flyPwrIncrement = 5;
-	const word battThresh = 7200;
-	const long pwrBtnsDelayInterval = 250,
-		pwrBtnsRepeatInterval = 100,
-		dispPwrTimeout = 1000;
+  const float flyPwrIncrement = 5;
+  const word battThresh = 7200;
+  const long pwrBtnsDelayInterval = 250,
+    pwrBtnsRepeatInterval = 100,
+    dispPwrTimeout = 1000;
 
-	bool dispPwr = false,
-		doUseLRPwr = true,
-		flash = false,
-		flashLeds,
-		forceBattWarning = true,
-		pwrBtnsDown,
-		pwrBtnsDelayed,
-		pwrBtnsRepeating;
+  bool dispPwr = false,
+    doUseLRPwr = true,
+    flash = false,
+    flashLeds,
+    forceBattWarning = true,
+    pwrBtnsDown,
+    pwrBtnsDelayed,
+    pwrBtnsRepeating;
 
-	float pwrBtns;
-	long time = nSysTime, flashTs = time, dispPwrTs = time, pwrBtnTs = time;
-	string str;
+  float pwrBtns;
+  long time = nSysTime, flashTs = time, dispPwrTs = time, pwrBtnTs = time;
+  string str;
 
-	DLatch dismissWarningLatch, pwrBtnLatch;
+  DLatch dismissWarningLatch, pwrBtnLatch;
 
-	while (true) {
-		time = nSysTime;
+  while (true) {
+    time = nSysTime;
 
-		if (nImmediateBatteryLevel < battThresh) {
-			if ((time - flashTs) >= 500) {
-				flash = !flash;
-				flashTs = time;
-			}
+    if (nImmediateBatteryLevel < battThresh) {
+      if ((time - flashTs) >= 500) {
+        flash = !flash;
+        flashTs = time;
+      }
 
-			flashLeds = true;
-		}
-		else {
-			SensorValue[redLed] =
-				SensorValue[yellowLed] =
-				SensorValue[greenLed] = 0;
-		}
+      flashLeds = true;
+    }
+    else {
+      SensorValue[redLed] =
+        SensorValue[yellowLed] =
+        SensorValue[greenLed] = 0;
+    }
 
-		clearLCD();
+    clearLCD();
 
-		if (nLCDButtons & kButtonCenter) {
-			bLCDBacklight = true;
+    if (nLCDButtons & kButtonCenter) {
+      bLCDBacklight = true;
 
-			displayLCDCenteredString(0, "Battery:");
+      displayLCDCenteredString(0, "Battery:");
 
-			sprintBatt(str);
+      sprintBatt(str);
 
-			displayLCDString(1, 0, str);
-		}
-		else if (nImmediateBatteryLevel < battThresh && (rkBotDisabled || rkAutonMode || forceBattWarning)) {
-			bLCDBacklight = flash;
+      displayLCDString(1, 0, str);
+    }
+    else if (nImmediateBatteryLevel < battThresh && (rkBotDisabled || rkAutonMode || forceBattWarning)) {
+      bLCDBacklight = flash;
 
-			if (flash) displayLCDCenteredString(0, "BATTERY WARNING");
+      if (flash) displayLCDCenteredString(0, "BATTERY WARNING");
 
-			sprintBatt(str);
-			displayLCDString(1, 0, str);
+      sprintBatt(str);
+      displayLCDString(1, 0, str);
 
-			if (fallingEdge(&dismissWarningLatch, nLCDButtons || (abs(vexRT[AccelY]) > 63))) forceBattWarning = false;
-		}
-		else if (rkBotDisabled) {
-			bLCDBacklight = false;
+      if (fallingEdge(&dismissWarningLatch, nLCDButtons || (abs(vexRT[AccelY]) > 63))) forceBattWarning = false;
+    }
+    else if (rkBotDisabled) {
+      bLCDBacklight = false;
 
-			displayLCDCenteredString(0, "Moosebot Mk. III");
-			displayLCDCenteredString(1, "4800Buckets");
-		}
-		else if (rkAutonMode) {
-			bLCDBacklight = true;
+      displayLCDCenteredString(0, "Moosebot Mk. III");
+      displayLCDCenteredString(1, "4800Buckets");
+    }
+    else if (rkAutonMode) {
+      bLCDBacklight = true;
 
-			displayLCDCenteredString(0, "BUCKETS MODE");
-			displayLCDCenteredString(1, "ENGAGED");
-		}
-		else { //User op mode
-			bLCDBacklight = true;
+      displayLCDCenteredString(0, "BUCKETS MODE");
+      displayLCDCenteredString(1, "ENGAGED");
+    }
+    else { //User op mode
+      bLCDBacklight = true;
 
-			pwrBtnsDown = PWR_BTN_DOWN ^ PWR_BTN_UP;
-			risingEdge(&pwrBtnLatch, pwrBtnsDown);
+      pwrBtnsDown = PWR_BTN_DOWN ^ PWR_BTN_UP;
+      risingEdge(&pwrBtnLatch, pwrBtnsDown);
 
-			if ((pwrBtnsDown || FLY_BTNS) && flyDir) dispPwrTs = time;
+      if ((pwrBtnsDown || FLY_BTNS) && flyDir) dispPwrTs = time;
 
-			if (pwrBtnsDown) {
-				dispPwrTs = time;
+      if (pwrBtnsDown) {
+        dispPwrTs = time;
 
-				if (pwrBtnLatch.out || (time - pwrBtnTs >= (pwrBtnsRepeating ? pwrBtnsRepeatInterval : pwrBtnsDelayInterval))) {
-					pwrBtnTs = time;
+        if (pwrBtnLatch.out || (time - pwrBtnTs >= (pwrBtnsRepeating ? pwrBtnsRepeatInterval : pwrBtnsDelayInterval))) {
+          pwrBtnTs = time;
 
-					if (pwrBtnsDelayed) {
-					  if (!pwrBtnsRepeating) pwrBtnsRepeating = true;
-					}
-					else pwrBtnsDelayed = true;
+          if (pwrBtnsDelayed) {
+            if (!pwrBtnsRepeating) pwrBtnsRepeating = true;
+          }
+          else pwrBtnsDelayed = true;
 
-					pwrBtns = twoWay(PWR_BTN_DOWN, -flyPwrIncrement, PWR_BTN_UP, flyPwrIncrement);
+          pwrBtns = twoWay(PWR_BTN_DOWN, -flyPwrIncrement, PWR_BTN_UP, flyPwrIncrement);
 
-					if (flyDir) {
-						flyPwr[flyDir] += pwrBtns;
-						playImmediateTone(pwrBtns > 0 ? 2700 : 2000, 5);
-					}
-				}
-			}
-			else pwrBtnsDelayed = pwrBtnsRepeating = false;
+          if (flyDir) {
+            flyPwr[flyDir] += pwrBtns;
+            playImmediateTone(pwrBtns > 0 ? 2700 : 2000, 5);
+          }
+        }
+      }
+      else pwrBtnsDelayed = pwrBtnsRepeating = false;
 
-			if (time - dispPwrTs <= dispPwrTimeout && flyDir) {
-				displayLCDCenteredString(0, flyPwrNames[flyDir]);
-				displayLCDNumber(1, 0, flyPwr[flyDir]);
-			}
-			else if (flyTbh.doRun) {
-				sprintf(str, "% 07.2f  % 07.2f",
-					fmaxf(-999.99, fminf(999.99, flyDispFlt.out)),
-					fmaxf(-999.99, fminf(999.99, -flyDispErrFlt.out)));
-				displayLCDString(0, 0, str);
+      if (time - dispPwrTs <= dispPwrTimeout && flyDir) {
+        displayLCDCenteredString(0, flyPwrNames[flyDir]);
+        displayLCDNumber(1, 0, flyPwr[flyDir]);
+      }
+      else if (flyTbh.doRun) {
+        sprintf(str, "% 07.2f  % 07.2f",
+          fmaxf(-999.99, fminf(999.99, flyDispFlt.out)),
+          fmaxf(-999.99, fminf(999.99, -flyDispErrFlt.out)));
+        displayLCDString(0, 0, str);
 
-				sprintf(str, "% 07.2f  % 07.2f",
-					fmaxf(-999.99, fminf(999.99, flyTbh.deriv)),
-					fmaxf(-999.99, fminf(999.99, flyTbh.out)));
-				displayLCDString(1, 0, str);
+        sprintf(str, "% 07.2f  % 07.2f",
+          fmaxf(-999.99, fminf(999.99, flyTbh.deriv)),
+          fmaxf(-999.99, fminf(999.99, flyTbh.out)));
+        displayLCDString(1, 0, str);
 
-				flashLeds = false;
+        flashLeds = false;
 
-				SensorValue[redLed] =
-					SensorValue[yellowLed] =
-					SensorValue[greenLed] = 0;
+        SensorValue[redLed] =
+          SensorValue[yellowLed] =
+          SensorValue[greenLed] = 0;
 
-				if (isTbhInThresh(&flyTbh, velThresh)) {
-					if (isTbhDerivInThresh(&flyTbh, accelThresh)) SensorValue[greenLed] = 1;
-					else  SensorValue[yellowLed] = 1;
-				}
-				else SensorValue[redLed] = 1;
-			}
-			else {
-				sprintf(str, "%-8s%8s", "Speed", "Error");
-				displayLCDString(0, 0, str);
+        if (isTbhInThresh(&flyTbh, velThresh)) {
+          if (isTbhDerivInThresh(&flyTbh, accelThresh)) SensorValue[greenLed] = 1;
+          else  SensorValue[yellowLed] = 1;
+        }
+        else SensorValue[redLed] = 1;
+      }
+      else {
+        sprintf(str, "%-8s%8s", "Speed", "Error");
+        displayLCDString(0, 0, str);
 
-				sprintf(str, "%-8s%8s", "Accel", "Out");
-				displayLCDString(1, 0, str);
-			}
-		}
+        sprintf(str, "%-8s%8s", "Accel", "Out");
+        displayLCDString(1, 0, str);
+      }
+    }
 
-		if (flashLeds) {
-			SensorValue[redLed] =
-				SensorValue[yellowLed] =
-				SensorValue[greenLed] = flash;
-		}
+    if (flashLeds) {
+      SensorValue[redLed] =
+        SensorValue[yellowLed] =
+        SensorValue[greenLed] = flash;
+    }
 
-		wait1Msec(20);
-	}
+    wait1Msec(20);
+  }
 }
 
 void startFlyTbh(bool useCtl) {
-	resetTbh(&flyTbh, 0);
+  resetTbh(&flyTbh, 0);
 
-	resetDiff(&flyDiff, 0);
-	resetDiff(&fly2Diff, 0);
+  resetDiff(&flyDiff, 0);
+  resetDiff(&fly2Diff, 0);
 
-	resetRAFlt(&fly2Flt, 0);
+  resetRAFlt(&fly2Flt, 0);
 
-	if (useCtl) updateTbhController(&flyCtl, 0);
-	else setTbhDoRun(&flyTbh, true);
+  if (useCtl) updateTbhController(&flyCtl, 0);
+  else setTbhDoRun(&flyTbh, true);
 
-	SensorValue[flyEnc] = 0;
+  SensorValue[flyEnc] = 0;
 }
 
 void stopCtls() {
-	setTbhDoRun(&flyTbh, false);
+  setTbhDoRun(&flyTbh, false);
 
-	stopCtlLoop();
+  stopCtlLoop();
 }
 
 #define FLY_DISP_FLT_LEN 10
 #define FLY_DISP_ERR_FLT_LEN 10
 #define FLY2_FLT_LEN 5
 float flyDispFltBuf[FLY_DISP_FLT_LEN],
-	flyDispErrFltBuf[FLY_DISP_ERR_FLT_LEN],
-  flyFltBuf[FLY2_FLT_LEN];
+flyDispErrFltBuf[FLY_DISP_ERR_FLT_LEN],
+flyFltBuf[FLY2_FLT_LEN];
 
 void init() {
-	playSoundFile("Start.wav");
+  //playSoundFile("Start.wav");
 
   ctlLoopInterval = 50;
 
-  initTbh(&flyTbh, 0, 0, .5, .4, 127, true, true);
+  initTbh(&flyTbh, 0, 0, .5, .4, 127, true);
 
   initTbhController(&flyCtl, &flyTbh, false);
 
@@ -280,137 +280,137 @@ void init() {
 }
 
 void updateCtl(float dt) {
-	updateDiff(&flyDiff, -SensorValue[flyEnc], dt);
-	updateDiff(&fly2Diff, flyDiff.out, dt);
+  updateDiff(&flyDiff, -SensorValue[flyEnc], dt);
+  updateDiff(&fly2Diff, flyDiff.out, dt);
 
-	updateRAFlt(&flyDispFlt, flyDiff.out);
-	updateRAFlt(&fly2Flt, fly2Diff.out);
+  updateRAFlt(&flyDispFlt, flyDiff.out);
+  updateRAFlt(&fly2Flt, fly2Diff.out);
 
-	if (flyTbh.doUpdate)
-		motor[lFly] =
-			motor[rFly] =
-			updateTbh(&flyTbh, flyDiff.out, fly2Flt.out, dt);
+  if (flyTbh.doUpdate)
+    motor[lFly] =
+    motor[rFly] =
+    updateTbh(&flyTbh, flyDiff.out, fly2Flt.out, dt);
 
-	updateRAFlt(&flyDispErrFlt, flyTbh.err);
+  updateRAFlt(&flyDispErrFlt, flyTbh.err);
 }
 
 task auton() {
-	const float recoilThresh = 40;
+  const float recoilThresh = 40;
 
-	startFlyTbh(false);
-	startCtlLoop();
+  startFlyTbh(false);
+  startCtlLoop();
 
-	setTbh(&flyTbh, autonFlyPwr);
+  setTbh(&flyTbh, autonFlyPwr);
 
 #ifdef USE_PRELOAD_AUTON
-	block(!(isTbhInThresh(&flyTbh, velThresh) &&
-		isTbhDerivInThresh(&flyTbh, accelThresh)));
+  block(!(isTbhInThresh(&flyTbh, velThresh) &&
+    isTbhDerivInThresh(&flyTbh, accelThresh)));
 
-	while (true) {
-		motor[intake] = motor[lift] = 80;
+  while (true) {
+    motor[intake] = motor[lift] = 80;
 
-		block(isTbhInThresh(&flyTbh, recoilThresh) &&
-			isTbhDerivInThresh(&flyTbh, accelThresh));
+    block(isTbhInThresh(&flyTbh, recoilThresh) &&
+      isTbhDerivInThresh(&flyTbh, accelThresh));
 
-		motor[intake] = motor[lift] = 0;
+    motor[intake] = motor[lift] = 0;
 
-		block(!(isTbhInThresh(&flyTbh, velThresh) &&
-			isTbhDerivInThresh(&flyTbh, accelThresh)));
+    block(!(isTbhInThresh(&flyTbh, velThresh) &&
+      isTbhDerivInThresh(&flyTbh, accelThresh)));
 
-		wait1Msec(20);
-	}
+    wait1Msec(20);
+  }
 #else
-	motor[intake] = motor[lift] = 127;
+  motor[intake] = motor[lift] = 127;
 #endif
 }
 
 void endAuton() {
-	stopCtls();
+  stopCtls();
 }
 
 task userOp() {
-	startFlyTbh(true);
-	startCtlLoop();
+  startFlyTbh(true);
+  startCtlLoop();
 
-	DLatch cutLatch,
-		flipLatch,
-		flipDownLatch,
-		tankLatch,
-		flyLRLatch,
-		flyMRLatch,
-		flySRLatch,
-		flyOffLatch,
-		flyLRLatch2,
-		flyMRLatch2,
-		flySRLatch2,
-		flyOffLatch2;
+  DLatch cutLatch,
+    flipLatch,
+    flipDownLatch,
+    tankLatch,
+    flyLRLatch,
+    flyMRLatch,
+    flySRLatch,
+    flyOffLatch,
+    flyLRLatch2,
+    flyMRLatch2,
+    flySRLatch2,
+    flyOffLatch2;
 
-	word driveR, driveY;
+  word driveR, driveY;
 
-	resetDLatch(&cutLatch, 0);
-	resetDLatch(&flipLatch, 0);
-	resetDLatch(&tankLatch, 0);
-	resetDLatch(&flyLRLatch, 0);
-	resetDLatch(&flyMRLatch, 0);
-	resetDLatch(&flySRLatch, 0);
-	resetDLatch(&flyOffLatch, 0);
-	resetDLatch(&flyLRLatch2, 0);
-	resetDLatch(&flyMRLatch2, 0);
-	resetDLatch(&flySRLatch2, 0);
-	resetDLatch(&flyOffLatch2, 0);
+  resetDLatch(&cutLatch, 0);
+  resetDLatch(&flipLatch, 0);
+  resetDLatch(&tankLatch, 0);
+  resetDLatch(&flyLRLatch, 0);
+  resetDLatch(&flyMRLatch, 0);
+  resetDLatch(&flySRLatch, 0);
+  resetDLatch(&flyOffLatch, 0);
+  resetDLatch(&flyLRLatch2, 0);
+  resetDLatch(&flyMRLatch2, 0);
+  resetDLatch(&flySRLatch2, 0);
+  resetDLatch(&flyOffLatch2, 0);
 
-	while (true) {
-		driveR = DRIVE_ROT;
-		driveY = DRIVE_FWD;
+  while (true) {
+    driveR = DRIVE_ROT;
+    driveY = DRIVE_FWD;
 
-		risingBistable(&flipLatch, DRIVE_FLIP_BTN);
+    risingBistable(&flipLatch, DRIVE_FLIP_BTN);
 
-		if (risingEdge(&flipDownLatch, DRIVE_FLIP_BTN)) {
-			clearSounds();
+    if (risingEdge(&flipDownLatch, DRIVE_FLIP_BTN)) {
+      clearSounds();
 
-			if (flipLatch.out) {
-				playTone(3000, 10);
-				playTone(2300, 10);
-			}
-			else {
-				playTone(2300, 10);
-				playTone(3000, 10);
-			}
-		}
+      if (flipLatch.out) {
+        playTone(3000, 10);
+        playTone(2300, 10);
+      }
+      else {
+        playTone(2300, 10);
+        playTone(3000, 10);
+      }
+    }
 
-		if (flipLatch.out)
-			driveY *= -1;
+    if (flipLatch.out)
+      driveY *= -1;
 
-		motor[flWheel] = motor[mlWheel] = motor[blWheel] =
-			arcadeLeft(driveR, driveY);
+    motor[flWheel] = motor[mlWheel] = motor[blWheel] =
+      arcadeLeft(driveR, driveY);
 
-		motor[frWheel] = motor[mrWheel] = motor[brWheel] =
-			arcadeRight(driveR, driveY);
+    motor[frWheel] = motor[mrWheel] = motor[brWheel] =
+      arcadeRight(driveR, driveY);
 
-		if (risingEdge(&flyLRLatch, FLY_LR_BTN) || risingEdge(&flyLRLatch2, FLY_LR_BTN_2))
-			flyDir = 3;
+    if (risingEdge(&flyLRLatch, FLY_LR_BTN) || risingEdge(&flyLRLatch2, FLY_LR_BTN_2))
+      flyDir = 3;
 
-		if (risingEdge(&flyMRLatch, FLY_MR_BTN) || risingEdge(&flyMRLatch2, FLY_MR_BTN_2))
-			flyDir = 2;
+    if (risingEdge(&flyMRLatch, FLY_MR_BTN) || risingEdge(&flyMRLatch2, FLY_MR_BTN_2))
+      flyDir = 2;
 
-		if (risingEdge(&flySRLatch, FLY_SR_BTN) || risingEdge(&flySRLatch2, FLY_SR_BTN_2))
-			flyDir = 1;
+    if (risingEdge(&flySRLatch, FLY_SR_BTN) || risingEdge(&flySRLatch2, FLY_SR_BTN_2))
+      flyDir = 1;
 
-		if (risingEdge(&flyOffLatch, FLY_OFF_BTN) || risingEdge(&flyOffLatch2, FLY_OFF_BTN_2))
-			flyDir = 0;
+    if (risingEdge(&flyOffLatch, FLY_OFF_BTN) || risingEdge(&flyOffLatch2, FLY_OFF_BTN_2))
+      flyDir = 0;
 
-		updateTbhController(&flyCtl, flyPwr[flyDir]);
+    updateTbhController(&flyCtl, flyPwr[flyDir]);
 
-		motor[intake] =
-			joyDigi2(INTAKE_FEEDIN_BTN, 127, INTAKE_FEEDOUT_BTN, -127);
+    motor[intake] =
+      joyDigi2(INTAKE_FEEDIN_BTN, 127, INTAKE_FEEDOUT_BTN, -127);
 
-		motor[lift] =
-			joyDigi2(LIFT_RAISE_BTN, 127, LIFT_LOWER_BTN, -127);
+    motor[lift] =
+      joyDigi2(LIFT_RAISE_BTN, 127, LIFT_LOWER_BTN, -127);
 
-		wait1Msec(25);
-	}
+    wait1Msec(25);
+  }
 }
 
 void endUserOp() {
-	stopCtls();
+  stopCtls();
 }
