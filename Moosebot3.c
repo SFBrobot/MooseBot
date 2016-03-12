@@ -266,7 +266,7 @@ flyDispErrFltBuf[FLY_DISP_ERR_FLT_LEN],
 flyFltBuf[FLY2_FLT_LEN];
 
 void init() {
-  //playSoundFile("Start.wav");
+  playSoundFile("Start_converted.wav");
 
   ctlLoopInterval = 50;
 
