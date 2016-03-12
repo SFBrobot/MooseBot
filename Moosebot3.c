@@ -87,13 +87,13 @@ const float autonFlyPwr = 830,
 	accelThresh = 150;
 
 ADiff flyDiff, fly2Diff;
-RAFlt flyDispFlt, fly2Flt;
+RAFlt flyDispFlt, flyDispErrFlt, fly2Flt;
 Tbh flyTbh;
 TbhController flyCtl;
 
 task lcd() {
 	const float flyPwrIncrement = 5;
-	const word battThresh = 7800;
+	const word battThresh = 7200;
 	const long pwrBtnsDelayInterval = 250,
 		pwrBtnsRepeatInterval = 100,
 		dispPwrTimeout = 1000;
@@ -184,8 +184,9 @@ task lcd() {
 
 					pwrBtns = twoWay(PWR_BTN_DOWN, -flyPwrIncrement, PWR_BTN_UP, flyPwrIncrement);
 
-					if (flyDir != 0)
+					if (flyDir) {
 						flyPwr[flyDir] += pwrBtns;
+					}
 				}
 			}
 			else pwrBtnsDelayed = pwrBtnsRepeating = false;
@@ -197,11 +198,11 @@ task lcd() {
 			else if (flyTbh.doRun) {
 				sprintf(str, "% 07.2f  % 07.2f",
 					fmaxf(-999.99, fminf(999.99, flyDispFlt.out)),
-					fmaxf(-999.99, fminf(999.99, flyTbh.err)));
+					fmaxf(-999.99, fminf(999.99, -flyDispErrFlt.out)));
 				displayLCDString(0, 0, str);
 
 				sprintf(str, "% 07.2f  % 07.2f",
-					fmaxf(-999.99, fminf(999.99, fly2Flt.out)),
+					fmaxf(-999.99, fminf(999.99, flyTbh.deriv)),
 					fmaxf(-999.99, fminf(999.99, flyTbh.out)));
 				displayLCDString(1, 0, str);
 
@@ -257,8 +258,10 @@ void stopCtls() {
 }
 
 #define FLY_DISP_FLT_LEN 10
+#define FLY_DISP_ERR_FLT_LEN 10
 #define FLY2_FLT_LEN 5
 float flyDispFltBuf[FLY_DISP_FLT_LEN],
+	flyDispErrFltBuf[FLY_DISP_ERR_FLT_LEN],
   flyFltBuf[FLY2_FLT_LEN];
 
 void init() {
@@ -269,6 +272,7 @@ void init() {
   initTbhController(&flyCtl, &flyTbh, false);
 
   initRAFlt(&flyDispFlt, flyDispFltBuf, FLY_DISP_FLT_LEN);
+  initRAFlt(&flyDispErrFlt, flyDispErrFltBuf, FLY_DISP_ERR_FLT_LEN);
   initRAFlt(&fly2Flt, flyFltBuf, FLY2_FLT_LEN);
 }
 
@@ -283,6 +287,8 @@ void updateCtl(float dt) {
 		motor[lFly] =
 			motor[rFly] =
 			updateTbh(&flyTbh, flyDiff.out, fly2Flt.out, dt);
+
+	updateRAFlt(&flyDispErrFlt, flyTbh.err);
 }
 
 task auton() {
