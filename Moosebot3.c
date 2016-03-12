@@ -84,7 +84,9 @@ const string flyPwrNames[4] = {
 
 const float autonFlyPwr = 820,
 velThresh = 75,
-accelThresh = 150;
+accelThresh = 150,
+driveFacOffs = .25,
+driveFacRange = 1 - driveFacOffs;
 
 ADiff flyDiff, fly2Diff;
 RAFlt flyDispFlt, flyDispErrFlt, fly2Flt;
@@ -344,6 +346,7 @@ task userOp() {
     flyOffLatch2;
 
   word driveR, driveY;
+  float fDriveR, fDriveY;
 
   resetDLatch(&cutLatch, 0);
   resetDLatch(&flipLatch, 0);
@@ -358,8 +361,14 @@ task userOp() {
   resetDLatch(&flyOffLatch2, 0);
 
   while (true) {
-    driveR = DRIVE_ROT;
-    driveY = DRIVE_FWD;
+    fDriveR = DRIVE_ROT;
+    fDriveY = DRIVE_FWD;
+
+    fDriveR = fDriveR * (driveFacOffs + fabs(fDriveR) / 127.0 * driveFacRange);
+    fDriveY = fDriveY * (driveFacOffs + fabs(fDriveY) / 127.0 * driveFacRange);
+
+    driveR = (word)round(fDriveR);
+    driveY = (word)round(fDriveY);
 
     if (risingBistable(&flipLatch, DRIVE_FLIP_BTN))
       driveY *= -1;
