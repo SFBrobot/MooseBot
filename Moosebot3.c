@@ -20,6 +20,14 @@
 #define RKCOMP_LCD //Enable LCD stuff in rkCompetition
 //#define RKCOMP_DEBUG //Comment to disable debug mode
 
+#define MODE_COMPETITION "Competition" //Competition (default) mode
+#define MODE_SKILLS_DRV "Driver Skills" //Driver skills mode
+#define MODE_SKILLS_PGM "Prgm. Skills" //Programming skills mode
+
+#define PGM_MODE MODE_COMPETITION
+//#define PGM_MODE MODE_SKILLS_DRV
+//#define PGM_MODE MODE_SKILLS_PGM
+
 #define RKCOMP_DEBUG_MENU_COND vexRT[Btn8L]
 #define RKCOMP_DEBUG_DISABLE_COND vexRT[Btn8U]
 #define RKCOMP_DEBUG_AUTON_COND vexRT[Btn8R]
@@ -82,11 +90,16 @@ const string flyPwrNames[4] = {
   "Long Power",
 };
 
-const float autonFlyPwr = 825,
-velThresh = 75,
-accelThresh = 150,
+const float velThresh = 20,
+accelThresh = 75,
 driveFacOffs = .25,
 driveFacRange = 1 - driveFacOffs;
+
+#if PGM_MODE == MODE_SKILLS_PGM
+const float autonFlyPwr = 650;
+#else
+const float autonFlyPwr = 825;
+#endif
 
 ADiff flyDiff, fly2Diff;
 RAFlt flyDispFlt, flyDispErrFlt, fly2Flt;
@@ -108,7 +121,7 @@ task lcd() {
     pwrBtnsRepeating;
 
   float pwrBtns;
-  long time = nSysTime, flashTs = time, dispPwrTs = time, pwrBtnTs = time;
+  long time = nSysTime, startTs = time, flashTs = time, dispPwrTs = time, pwrBtnTs = time;
   string str;
 
   DLatch dismissWarningLatch, pwrBtnLatch;
@@ -132,7 +145,13 @@ task lcd() {
 
     clearLCD();
 
-    if (nLCDButtons & kButtonCenter) {
+    if ((time - startTs) <= 3000) {
+		  bLCDBacklight = true;
+
+		  displayLCDCenteredString(0, "Program Mode:");
+		  displayLCDCenteredString(1, PGM_MODE);
+    }
+    else if (nLCDButtons & kButtonCenter) {
       bLCDBacklight = true;
 
       displayLCDCenteredString(0, "Battery:");
