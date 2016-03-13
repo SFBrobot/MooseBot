@@ -98,7 +98,7 @@ driveFacRange = 1 - driveFacOffs;
 #if PGM_MODE == MODE_SKILLS_PGM
 const float autonFlyPwr = 650;
 #else
-const float autonFlyPwr = 825;
+const float autonFlyPwr = 820;
 #endif
 
 ADiff flyDiff, fly2Diff;
@@ -290,7 +290,7 @@ flyFltBuf[FLY2_FLT_LEN];
 void init() {
   ctlLoopInterval = 50;
 
-  initTbh(&flyTbh, 0, .8, .4, .3, 127, true);
+  initTbh(&flyTbh, 0, .9, .5, .3, 127, true);
 
   initTbhController(&flyCtl, &flyTbh, false);
 
