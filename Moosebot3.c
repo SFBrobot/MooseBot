@@ -370,18 +370,6 @@ task userOp() {
     flySRLatch2,
     flyOffLatch2;
 
-	word driveA, driveB;
-	float fDriveA, fDriveB;
-
-#define driveX driveA
-#define driveY driveB
-#define driveL driveA
-#define driveR driveB
-#define fDriveX fDriveA
-#define fDriveY fDriveB
-#define fDriveL fDriveA
-#define fDriveR fDriveB
-
   resetDLatch(&cutLatch, 0);
   resetDLatch(&flipLatch, 0);
   resetDLatch(&tankLatch, 0);
@@ -394,51 +382,39 @@ task userOp() {
   resetDLatch(&flySRLatch2, 0);
   resetDLatch(&flyOffLatch2, 0);
 
+  word mid, side;
+  float fMid, fSide;
+
   while (true) {
     risingBistable(&flipLatch, DRIVE_FLIP_BTN);
 
     if (risingBistable(&tankLatch, DRIVE_TANK_BTN)) {
-      fDriveL = DRIVE_LEFT;
-      fDriveR = DRIVE_RIGHT;
+      float left = DRIVE_LEFT,
+        right = DRIVE_RIGHT;
 
-      float fac = driveFacOffs + fabs(fDriveL + fDriveR) / 254 * driveFacRange;
-
-      fDriveL = fDriveL * fac;
-      fDriveR = fDriveR * fac;
-
-      driveL = (word)round(fDriveL);
-      driveR = (word)round(fDriveR);
-
-      motor[flWheel] =
-        motor[mlWheel] =
-        motor[blWheel] =
-        tankLeft(driveL, driveR, flipLatch.out);
-
-      motor[frWheel] =
-        motor[mrWheel] =
-        motor[brWheel] =
-        tankRight(driveL, driveR, flipLatch.out);
+      fMid = (left + right) / 2;
+      fSide = (left - right) / 2;
     }
     else {
-	    fDriveX = DRIVE_ROT;
-	    fDriveY = DRIVE_FWD;
+      fMid = DRIVE_FWD;
+      fSide = DRIVE_ROT;
+    }
 
-	    fDriveX = fDriveX * (driveFacOffs + fabs(fDriveX) / 127 * driveFacRange);
-	    fDriveY = fDriveY * (driveFacOffs + fabs(fDriveY) / 127 * driveFacRange);
+    fMid = fMid * (driveFacOffs + fabs(fMid) / 127 * driveFacRange);
+    fSide = fSide * (driveFacOffs + fabs(fSide) / 127 * driveFacRange);
 
-	    driveX = (word)round(fDriveX);
-	    driveY = (word)round(fDriveY);
+	  mid = (word)round(fMid);
+	  side = (word)round(fSide);
 
-	    motor[flWheel] =
-	      motor[mlWheel] =
-	      motor[blWheel] =
-	      arcadeLeft(driveX, driveY, flipLatch.out);
+    motor[flWheel] =
+      motor[mlWheel] =
+      motor[blWheel] =
+      arcadeLeft(side, mid, flipLatch.out);
 
-	    motor[frWheel] =
-	      motor[mrWheel] =
-	      motor[brWheel] =
-	      arcadeRight(driveX, driveY, flipLatch.out);
-	  }
+    motor[frWheel] =
+      motor[mrWheel] =
+      motor[brWheel] =
+      arcadeRight(side, mid, flipLatch.out);
 
     if (risingEdge(&flipDownLatch, DRIVE_FLIP_BTN)) {
       clearSounds();
@@ -475,14 +451,6 @@ task userOp() {
 
     wait1Msec(25);
   }
-#undef driveX
-#undef driveY
-#undef driveL
-#undef driveR
-#undef fDriveX
-#undef fDriveY
-#undef fDriveL
-#undef fDriveR
 }
 
 void endUserOp() {
