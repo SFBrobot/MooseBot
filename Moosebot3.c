@@ -113,7 +113,8 @@ task lcd() {
     pwrBtnsRepeatInterval = 100,
     dispPwrTimeout = 1000;
 
-  bool flash = false,
+  bool battWarning = false,
+    flash = false,
     flashLeds,
     forceBattWarning = true,
     pwrBtnsDown,
@@ -128,6 +129,7 @@ task lcd() {
 
   while (true) {
     time = nSysTime;
+    battWarning = nImmediateBatteryLevel < battThresh || BackupBatteryLevel < battThresh;
 
     if (flyTbh.doRun) {
       flashLeds = false;
@@ -142,7 +144,7 @@ task lcd() {
       }
       else SensorValue[redLed] = 1;
     }
-    else if (nImmediateBatteryLevel < battThresh) {
+    else if (battWarning) {
       if ((time - flashTs) >= 500) {
         flash = !flash;
         flashTs = time;
@@ -173,7 +175,7 @@ task lcd() {
 
       displayLCDString(1, 0, str);
     }
-    else if (nImmediateBatteryLevel < battThresh && (rkBotDisabled || rkAutonMode || forceBattWarning)) {
+    else if (battWarning && (rkBotDisabled || rkAutonMode || forceBattWarning)) {
       bLCDBacklight = flash;
 
       if (flash) displayLCDCenteredString(0, "BATTERY WARNING");
