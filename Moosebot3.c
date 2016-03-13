@@ -28,14 +28,11 @@
 //#define PGM_MODE MODE_SKILLS_DRV
 //#define PGM_MODE MODE_SKILLS_PGM
 
-#define RKCOMP_DEBUG_MENU_COND vexRT[Btn8L]
-#define RKCOMP_DEBUG_DISABLE_COND vexRT[Btn8U]
-#define RKCOMP_DEBUG_AUTON_COND vexRT[Btn8R]
-#define RKCOMP_DEBUG_DRIVER_COND vexRT[Btn8D]
+#define RKCOMP_DEBUG_MENU_COND vexRT[Btn8U]
+#define RKCOMP_DEBUG_DISABLE_COND vexRT[Btn8L]
+#define RKCOMP_DEBUG_AUTON_COND vexRT[Btn8D]
+#define RKCOMP_DEBUG_DRIVER_COND vexRT[Btn8R]
 #define RKCOMP_DEBUG_RESTART_COND vexRT[Btn6U]
-
-#define DRIVE_ROT joyAnalog(ChRX, 5)
-#define DRIVE_FWD joyAnalog(ChLY, 5)
 
 #define FLY_LR_BTN vexRT[Btn7U]
 #define FLY_MR_BTN vexRT[Btn7L]
@@ -52,6 +49,12 @@
 #define PWR_BTN_DOWN ((nLCDButtons & kButtonLeft) || vexRT[Btn5D] || vexRT[Btn8DXmtr2])
 #define PWR_BTN_UP ((nLCDButtons & kButtonRight) || vexRT[Btn5U] || vexRT[Btn8UXmtr2])
 
+#define DRIVE_ROT joyAnalog(ChRX, 5)
+#define DRIVE_FWD joyAnalog(ChLY, 5)
+#define DRIVE_LEFT joyAnalog(ChLY, 5)
+#define DRIVE_RIGHT joyAnalog(ChRY, 5)
+
+#define DRIVE_TANK_BTN vexRT[Btn8L]
 #define DRIVE_FLIP_BTN vexRT[Btn8R]
 
 #define FEEDIN_BTN vexRT[Btn6U]
@@ -367,8 +370,17 @@ task userOp() {
     flySRLatch2,
     flyOffLatch2;
 
-  word driveR, driveY;
-  float fDriveR, fDriveY;
+	word driveA, driveB;
+	float fDriveA, fDriveB;
+
+#define driveX driveA
+#define driveY driveB
+#define driveL driveA
+#define driveR driveB
+#define fDriveX fDriveA
+#define fDriveY fDriveB
+#define fDriveL fDriveA
+#define fDriveR fDriveB
 
   resetDLatch(&cutLatch, 0);
   resetDLatch(&flipLatch, 0);
@@ -383,17 +395,50 @@ task userOp() {
   resetDLatch(&flyOffLatch2, 0);
 
   while (true) {
-    fDriveR = DRIVE_ROT;
-    fDriveY = DRIVE_FWD;
+    risingBistable(&flipLatch, DRIVE_FLIP_BTN);
 
-    fDriveR = fDriveR * (driveFacOffs + fabs(fDriveR) / 127.0 * driveFacRange);
-    fDriveY = fDriveY * (driveFacOffs + fabs(fDriveY) / 127.0 * driveFacRange);
+    if (risingBistable(&tankLatch, DRIVE_TANK_BTN)) {
+      fDriveL = DRIVE_LEFT;
+      fDriveR = DRIVE_RIGHT;
 
-    driveR = (word)round(fDriveR);
-    driveY = (word)round(fDriveY);
+      float fac = driveFacOffs + fabs(fDriveL + fDriveR) / 254 * driveFacRange;
 
-    if (risingBistable(&flipLatch, DRIVE_FLIP_BTN))
-      driveY *= -1;
+      fDriveL = fDriveL * fac;
+      fDriveR = fDriveR * fac;
+
+      driveL = (word)round(fDriveL);
+      driveR = (word)round(fDriveR);
+
+      motor[flWheel] =
+        motor[mlWheel] =
+        motor[blWheel] =
+        tankLeft(driveL, driveR, flipLatch.out);
+
+      motor[frWheel] =
+        motor[mrWheel] =
+        motor[brWheel] =
+        tankRight(driveL, driveR, flipLatch.out);
+    }
+    else {
+	    fDriveX = DRIVE_ROT;
+	    fDriveY = DRIVE_FWD;
+
+	    fDriveX = fDriveX * (driveFacOffs + fabs(fDriveX) / 127 * driveFacRange);
+	    fDriveY = fDriveY * (driveFacOffs + fabs(fDriveY) / 127 * driveFacRange);
+
+	    driveX = (word)round(fDriveX);
+	    driveY = (word)round(fDriveY);
+
+	    motor[flWheel] =
+	      motor[mlWheel] =
+	      motor[blWheel] =
+	      arcadeLeft(driveX, driveY, flipLatch.out);
+
+	    motor[frWheel] =
+	      motor[mrWheel] =
+	      motor[brWheel] =
+	      arcadeRight(driveX, driveY, flipLatch.out);
+	  }
 
     if (risingEdge(&flipDownLatch, DRIVE_FLIP_BTN)) {
       clearSounds();
@@ -407,12 +452,6 @@ task userOp() {
         playTone(3000, 10);
       }
     }
-
-    motor[flWheel] = motor[mlWheel] = motor[blWheel] =
-      arcadeLeft(driveR, driveY);
-
-    motor[frWheel] = motor[mrWheel] = motor[brWheel] =
-      arcadeRight(driveR, driveY);
 
     if (risingEdge(&flyLRLatch, FLY_LR_BTN) || risingEdge(&flyLRLatch2, FLY_LR_BTN_2))
       flyDir = 3;
@@ -436,6 +475,14 @@ task userOp() {
 
     wait1Msec(25);
   }
+#undef driveX
+#undef driveY
+#undef driveL
+#undef driveR
+#undef fDriveX
+#undef fDriveY
+#undef fDriveL
+#undef fDriveR
 }
 
 void endUserOp() {
