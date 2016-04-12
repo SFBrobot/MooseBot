@@ -161,10 +161,10 @@ task lcd() {
     clearLCD();
 
     if ((time - startTs) <= 3000) {
-		  bLCDBacklight = true;
+      bLCDBacklight = true;
 
-		  displayLCDCenteredString(0, "Program Mode:");
-		  displayLCDCenteredString(1, PGM_MODE);
+      displayLCDCenteredString(0, "Program Mode:");
+      displayLCDCenteredString(1, PGM_MODE);
     }
     else if (nLCDButtons & kButtonCenter) {
       bLCDBacklight = true;
