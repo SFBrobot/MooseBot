@@ -85,7 +85,7 @@
 
 int flyDir;
 
-float flyPwr[4] = { 0, 2240, 2420, 2720 };
+float flyPwr[4] = { 0, 2000, 2435, 2720 };
 
 const string flyPwrNames[4] = {
   "Off",
