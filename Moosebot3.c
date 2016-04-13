@@ -287,8 +287,8 @@ void stopCtls() {
 #define FLY_DISP_ERR_FLT_LEN 10
 #define FLY2_FLT_LEN 5
 float flyDispFltBuf[FLY_DISP_FLT_LEN],
-flyDispErrFltBuf[FLY_DISP_ERR_FLT_LEN],
-flyFltBuf[FLY2_FLT_LEN];
+  flyDispErrFltBuf[FLY_DISP_ERR_FLT_LEN],
+  flyFltBuf[FLY2_FLT_LEN];
 
 void init() {
   ctlLoopInterval = 50;
