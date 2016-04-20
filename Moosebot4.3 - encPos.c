@@ -123,6 +123,7 @@ TbhController flyCtl;
 
 Pid lPid, rPid;
 DriveEnc lDrive, rDrive;
+Pos botPos;
 
 task lcd() {
   const float flyPwrIncrement = 20;
@@ -320,6 +321,8 @@ void init() {
 
   initPid(&lPid, 10, .1, .001, .01, 127, false);
   initPid(&rPid, 10, .1, .001, .01, 127, false);
+
+  initPos(&botPos, 196, I2C_1, I2C_2);
 }
 
 void updateCtl(float dt) {
@@ -339,6 +342,7 @@ void updateCtl(float dt) {
   	updatePid(&lPid, lPid.input, lDiff.out, dt);
  	if(rPid.doUpdate)
  		updatePid(&rPid, rPid.input, rDiff.out, dt);
+ 	updatePos(&botPos);
 
   updateRAFlt(&flyDispErrFlt, flyTbh.err);
 }
