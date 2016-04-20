@@ -1,3 +1,4 @@
+
 #pragma config(UART_Usage, UART1, uartVEXLCD, baudRate19200, IOPins, None, None)
 #pragma config(UART_Usage, UART2, uartNotUsed, baudRate4800, IOPins, None, None)
 #pragma config(I2C_Usage, I2C1, i2cSensors)
@@ -41,7 +42,8 @@
 #define RKCOMP_DEBUG_RESTART_COND vexRT[Btn6U]
 */
 
-#define SAVE_ENC_BTN vexRT[Btn8U]
+#define SAVE_ENC_BTN vexRT[Btn8L]
+#define SAVE_ENC_MAX 15
 
 #define FLY_LR_BTN vexRT[Btn7U]
 #define FLY_MR_BTN vexRT[Btn7L]
@@ -69,7 +71,7 @@
 #define FEEDIN_BTN vexRT[Btn6U]
 #define FEEDOUT_BTN vexRT[Btn6D]
 
-#define INTAKE_FEEDIN_BTN (FEEDIN_BTN || vexRT[Btn5UXmtr2])
+#define INTAKE_FEEDIN_BTN (FEEDIN_BTN || vexRT[Btn8U] || vexRT[Btn5UXmtr2])
 #define INTAKE_FEEDOUT_BTN (FEEDOUT_BTN || vexRT[Btn5DXmtr2])
 
 #define LIFT_RAISE_BTN (FEEDIN_BTN || vexRT[Btn6UXmtr2])
@@ -94,13 +96,13 @@
 #define USE_PRELOAD_AUTON //Comment to start the intake immediately in auton
 
 typedef struct {
-	int encVals[15],
-		deltaEnc[15];
+	int encVals[SAVE_ENC_MAX],
+		deltaEnc[SAVE_ENC_MAX];
 } DriveEnc;
 
 int flyDir;
 
-float flyPwr[4] = { 0, 1920, 2435, 2720 };
+float flyPwr[4] = { 0, 1920, 2435, 2800 };
 
 const string flyPwrNames[4] = {
   "Off",
@@ -117,9 +119,9 @@ const float velThresh = 20,
   masterDriveFacRange = 1 - masterDriveFacOffs;
 
 #if PGM_MODE == MODE_SKILLS_PGM
-const float autonFlyPwr = 650;
+const float autonFlyPwr = flyPwr[2];
 #else
-const float autonFlyPwr = 820;
+const float autonFlyPwr = flyPwr[3];
 #endif
 
 ADiff flyDiff, fly2Diff;
@@ -129,7 +131,7 @@ TbhController flyCtl;
 DriveEnc lDrive, rDrive;
 
 task lcd() {
-  const float flyPwrIncrement = 20;
+  const float flyPwrIncrement = 10;
   const word battThresh = 7200;
   const long pwrBtnsDelayInterval = 250,
     pwrBtnsRepeatInterval = 100,
@@ -193,7 +195,7 @@ task lcd() {
 
       displayLCDCenteredString(0, "Battery:");
 
-      sprintBatt(str);
+      sprintBatt(str, in1);
 
       displayLCDString(1, 0, str);
     }
@@ -312,7 +314,7 @@ float flyDispFltBuf[FLY_DISP_FLT_LEN],
 void init() {
   ctlLoopInterval = 50;
 
-  initTbh(&flyTbh, 0, .09, .0005, .0003, 127, true);
+  initTbh(&flyTbh, 0, .1, .0005, .0003, 127, true);
 
   initTbhController(&flyCtl, &flyTbh, false);
 
@@ -483,7 +485,7 @@ task userOp() {
     motor[lift] =
       twoWay(LIFT_RAISE_BTN, 127, LIFT_LOWER_BTN, -127);
 
-    if(risingEdge(&saveEncsLatch, SAVE_ENC_BTN)) {
+    if(risingEdge(&saveEncsLatch, SAVE_ENC_BTN) && saveEncs < SAVE_ENC_MAX) {
     	lDrive.encVals[saveEncs] = SensorValue[lDriveEnc];
     	rDrive.encVals[saveEncs] = SensorValue[rDriveEnc];
     	lDrive.deltaEnc[saveEncs] = (saveEncs > 0) ? (lDrive.encVals[saveEncs] - lDrive.encVals[saveEncs-1]) : 0;

@@ -33,15 +33,16 @@
 //#define PGM_MODE MODE_SKILLS_DRV
 //#define PGM_MODE MODE_SKILLS_PGM
 
-#define RKCOMP_DEBUG_MENU_COND vexRT[Btn8L]
 /*
+#define RKCOMP_DEBUG_MENU_COND vexRT[Btn8L]
 #define RKCOMP_DEBUG_DISABLE_COND vexRT[Btn8L]
 #define RKCOMP_DEBUG_AUTON_COND vexRT[Btn8D]
 #define RKCOMP_DEBUG_DRIVER_COND vexRT[Btn8R]
 #define RKCOMP_DEBUG_RESTART_COND vexRT[Btn6U]
 */
 
-#define SAVE_ENC_BTN vexRT[Btn8U]
+#define SAVE_ENC_BTN vexRT[Btn8L]
+#define SAVE_ENC_MAX 15
 
 #define FLY_LR_BTN vexRT[Btn7U]
 #define FLY_MR_BTN vexRT[Btn7L]
@@ -69,7 +70,7 @@
 #define FEEDIN_BTN vexRT[Btn6U]
 #define FEEDOUT_BTN vexRT[Btn6D]
 
-#define INTAKE_FEEDIN_BTN (FEEDIN_BTN || vexRT[Btn5UXmtr2])
+#define INTAKE_FEEDIN_BTN (FEEDIN_BTN || vexRT[Btn8U] || vexRT[Btn5UXmtr2])
 #define INTAKE_FEEDOUT_BTN (FEEDOUT_BTN || vexRT[Btn5DXmtr2])
 
 #define LIFT_RAISE_BTN (FEEDIN_BTN || vexRT[Btn6UXmtr2])
@@ -94,13 +95,13 @@
 #include "rkCompetition/lib.h"
 
 typedef struct {
-	int encVals[15],
-		deltaEnc[15];
+	int encVals[SAVE_ENC_MAX],
+		deltaEnc[SAVE_ENC_MAX];
 } DriveEnc;
 
 int flyDir;
 
-float flyPwr[4] = { 0, 2000, 2435, 2720 };
+float flyPwr[4] = { 0, 1920, 2440, 2800 };
 
 const string flyPwrNames[4] = {
   "Off",
@@ -114,7 +115,10 @@ const float velThresh = 20,
   driveFacOffs = .25,
   driveFacRange = 1 - driveFacOffs,
   masterDriveFacOffs = .75,
-  masterDriveFacRange = 1 - masterDriveFacOffs;
+  masterDriveFacRange = 1 - masterDriveFacOffs,
+  wheelDiam = 3.25,
+  turnDiam = 15.5,
+  convertToRads = turnDiam / wheelDiam;
 
 ADiff flyDiff, fly2Diff, lDiff, rDiff;
 RAFlt flyDispFlt, flyDispErrFlt, fly2Flt;
@@ -322,7 +326,7 @@ void init() {
   initPid(&lPid, 10, .1, .001, .01, 127, false);
   initPid(&rPid, 10, .1, .001, .01, 127, false);
 
-  initPos(&botPos, 196, I2C_1, I2C_2);
+  initPos(&botPos, convertToRads, I2C_1, I2C_2);
 }
 
 void updateCtl(float dt) {
@@ -474,11 +478,13 @@ task userOp() {
       twoWay(LIFT_RAISE_BTN, 127, LIFT_LOWER_BTN, -127);
 
     if(risingEdge(&saveEncsLatch, SAVE_ENC_BTN)) {
+      if(saveEncs < SAVE_ENC_MAX) {
     	lDrive.encVals[saveEncs] = SensorValue[lDriveEnc];
     	rDrive.encVals[saveEncs] = SensorValue[rDriveEnc];
     	lDrive.deltaEnc[saveEncs] = (saveEncs > 0) ? (lDrive.encVals[saveEncs] - lDrive.encVals[saveEncs-1]) : 0;
     	rDrive.deltaEnc[saveEncs] = (saveEncs > 0) ? (rDrive.encVals[saveEncs] - rDrive.encVals[saveEncs-1]) : 0;
     	saveEncs++;
+      }
     }
 
 
