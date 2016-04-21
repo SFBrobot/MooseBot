@@ -79,6 +79,7 @@
 #define BATT_WARNING_DISMISS (nLCDButtons || vexRT[Btn8D] || (abs(vexRT[AccelY]) > 63)))
 
 #include "rkUtil/lib.h"
+#include "rkUtil/floatDlog.h"
 
 #include "rkLogic/dlatch.h"
 
@@ -477,14 +478,12 @@ task userOp() {
     motor[lift] =
       twoWay(LIFT_RAISE_BTN, 127, LIFT_LOWER_BTN, -127);
 
-    if(risingEdge(&saveEncsLatch, SAVE_ENC_BTN)) {
-      if(saveEncs < SAVE_ENC_MAX) {
+    if(risingEdge(&saveEncsLatch, SAVE_ENC_BTN) && saveEncs < SAVE_ENC_MAX) {
     	lDrive.encVals[saveEncs] = SensorValue[lDriveEnc];
     	rDrive.encVals[saveEncs] = SensorValue[rDriveEnc];
     	lDrive.deltaEnc[saveEncs] = (saveEncs > 0) ? (lDrive.encVals[saveEncs] - lDrive.encVals[saveEncs-1]) : 0;
     	rDrive.deltaEnc[saveEncs] = (saveEncs > 0) ? (rDrive.encVals[saveEncs] - rDrive.encVals[saveEncs-1]) : 0;
     	saveEncs++;
-      }
     }
 
 
