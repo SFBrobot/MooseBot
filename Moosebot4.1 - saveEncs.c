@@ -1,4 +1,3 @@
-
 #pragma config(UART_Usage, UART1, uartVEXLCD, baudRate19200, IOPins, None, None)
 #pragma config(UART_Usage, UART2, uartNotUsed, baudRate4800, IOPins, None, None)
 #pragma config(I2C_Usage, I2C1, i2cSensors)
@@ -6,9 +5,13 @@
 #pragma config(Sensor, dgtl1,  flyEnc,         sensorQuadEncoder)
 #pragma config(Sensor, dgtl3,  flyLed,         sensorLEDtoVCC)
 #pragma config(Sensor, dgtl4,  intakeLed,      sensorLEDtoVCC)
-#pragma config(Sensor, dgtl5,  greenLed,       sensorLEDtoVCC)
-#pragma config(Sensor, dgtl6,  redLed,         sensorLEDtoVCC)
-#pragma config(Sensor, dgtl7,  yellowLed,      sensorLEDtoVCC)
+#pragma config(Sensor, dgtl5,  leftLim,        sensorTouch)
+#pragma config(Sensor, dgtl6,  rightLim,       sensorTouch)
+#pragma config(Sensor, dgtl7,  red,            sensorDigitalIn)
+#pragma config(Sensor, dgtl8,  back,           sensorDigitalIn)
+#pragma config(Sensor, dgtl10, redLed,         sensorLEDtoVCC)
+#pragma config(Sensor, dgtl11, yellowLed,      sensorLEDtoVCC)
+#pragma config(Sensor, dgtl12, greenLed,       sensorLEDtoVCC)
 #pragma config(Sensor, I2C_1,  lDriveEnc,      sensorQuadEncoderOnI2CPort,    , AutoAssign )
 #pragma config(Sensor, I2C_2,  rDriveEnc,      sensorQuadEncoderOnI2CPort,    , AutoAssign )
 #pragma config(Motor,  port1,           lift,          tmotorVex393TurboSpeed_HBridge, openLoop, reversed)
@@ -65,21 +68,24 @@
 #define DRIVE_LEFT joyAnalog(ChLY, 10)
 #define DRIVE_RIGHT joyAnalog(ChRY, 10)
 
-#define DRIVE_TANK_BTN false
+#define DRIVE_TANK_BTN vexRT[Btn8L]
 #define DRIVE_FLIP_BTN vexRT[Btn8R]
 
 #define FEEDIN_BTN vexRT[Btn6U]
 #define FEEDOUT_BTN vexRT[Btn6D]
 
-#define INTAKE_FEEDIN_BTN (FEEDIN_BTN || vexRT[Btn8U] || vexRT[Btn5UXmtr2])
+#define INTAKE_FEEDIN_BTN (FEEDIN_BTN || vexRT[Btn5UXmtr2])
 #define INTAKE_FEEDOUT_BTN (FEEDOUT_BTN || vexRT[Btn5DXmtr2])
 
 #define LIFT_RAISE_BTN (FEEDIN_BTN || vexRT[Btn6UXmtr2])
-#define LIFT_LOWER_BTN (FEEDOUT_BTN || vexRT[Btn8D])
+#define LIFT_LOWER_BTN (FEEDOUT_BTN)
+
+#define FIRE_BTN vexRT[Btn8U]
 
 #define BATT_WARNING_DISMISS (nLCDButtons || vexRT[Btn8D] || (abs(vexRT[AccelY]) > 63)))
 
 #include "rkUtil/lib.h"
+#include "rkUtil/floatDlog.h"
 
 #include "rkLogic/dlatch.h"
 
@@ -90,6 +96,7 @@
 #include "rkControl/rollAvg.h"
 #include "rkControl/tbh.h"
 #include "rkControl/tbhController.h"
+#include "rkControl/pid.h"
 
 #include "rkCompetition/lib.h"
 
@@ -100,9 +107,10 @@ typedef struct {
 		deltaEnc[SAVE_ENC_MAX];
 } DriveEnc;
 
-int flyDir;
+int flyDir,
+	shotCount = 0;
 
-float flyPwr[4] = { 0, 1920, 2435, 2800 };
+float flyPwr[4] = { 0, 1920, 2435, 2875 };
 
 const string flyPwrNames[4] = {
   "Off",
@@ -118,20 +126,27 @@ const float velThresh = 20,
   masterDriveFacOffs = .75,
   masterDriveFacRange = 1 - masterDriveFacOffs;
 
+DLatch ballShot;
+
+/*
 #if PGM_MODE == MODE_SKILLS_PGM
 const float autonFlyPwr = flyPwr[2];
 #else
 const float autonFlyPwr = flyPwr[3];
 #endif
+*/
+
+const float autonFlyPwr[2] = { 2680, 2710 };
 
 ADiff flyDiff, fly2Diff;
 RAFlt flyDispFlt, flyDispErrFlt, fly2Flt;
 Tbh flyTbh;
 TbhController flyCtl;
 DriveEnc lDrive, rDrive;
+Pid lPid, rPid;
 
 task lcd() {
-  const float flyPwrIncrement = 10;
+  const float flyPwrIncrement = 5;
   const word battThresh = 7200;
   const long pwrBtnsDelayInterval = 250,
     pwrBtnsRepeatInterval = 100,
@@ -314,17 +329,20 @@ float flyDispFltBuf[FLY_DISP_FLT_LEN],
 void init() {
   ctlLoopInterval = 50;
 
-  initTbh(&flyTbh, 0, .1, .0005, .0003, 127, true);
+  initTbh(&flyTbh, 0, .09, .001, .0007, 127, true);  //Initialize TBH with coefficients								You will change these numbers to tune the loop
 
   initTbhController(&flyCtl, &flyTbh, false);
 
   initRAFlt(&flyDispFlt, flyDispFltBuf, FLY_DISP_FLT_LEN);
   initRAFlt(&flyDispErrFlt, flyDispErrFltBuf, FLY_DISP_ERR_FLT_LEN);
   initRAFlt(&fly2Flt, flyFltBuf, FLY2_FLT_LEN);
+
+  initPid(&lPid, 10, .1, .001, .01, 127, false);
+  initPid(&rPid, 10, .1, .001, .01, 127, false);
 }
 
 void updateCtl(float dt) {
-  updateDiff(&flyDiff, SensorValue[flyEnc] / 2, dt);
+  updateDiff(&flyDiff, SensorValue[flyEnc] / 2., dt);
   updateDiff(&fly2Diff, flyDiff.out, dt);
 
   updateRAFlt(&flyDispFlt, flyDiff.out);
@@ -335,10 +353,16 @@ void updateCtl(float dt) {
     motor[rFly] =
       updateTbh(&flyTbh, flyDiff.out, fly2Flt.out, dt);
 
+  updatePid(&lPid, SensorValue[lDriveEnc], 0, dt);
+  updatePid(&rPid, SensorValue[rDriveEnc], 0, dt);
+
   updateRAFlt(&flyDispErrFlt, flyTbh.err);
+
+  if(motor[lift] >= 0 && fallingEdge(&ballShot, (SensorValue[leftLim] || SensorValue[rightLim])))
+  	shotCount++;
 }
 
-task auton() {
+task auton() {																																			//AUTONOMOUS
   playSoundFile("Start_converted.wav");
 
   const float recoilThresh = 40;
@@ -346,9 +370,185 @@ task auton() {
   startFlyTbh(false);
   startCtlLoop();
 
-  setTbh(&flyTbh, autonFlyPwr);
+ 	if(SensorValue[red]) {
+ 		if(SensorValue[back]) {
 
-#ifdef USE_PRELOAD_AUTON
+ 			setTbh(&flyTbh, autonFlyPwr[0]);
+
+ 			setPid(&lPid, 915); //drive straight
+  		setPid(&rPid, -890);
+
+  		while(!lPid.isOnTgt && !rPid.isOnTgt)
+  			wait1Msec(5);
+
+			movePid(&lPid, 85); //turn
+			movePid(&rPid, 154);
+
+			while(!lPid.isOnTgt && !rPid.isOnTgt)
+  			wait1Msec(5);
+
+			movePid(&lPid, -338); //drive straight
+			movePid(&rPid, 381);
+
+			while(!lPid.isOnTgt && !rPid.isOnTgt) {
+				motor[intake] =
+  				127;
+  			if(!SensorValue[leftLim] && !SensorValue[rightLim])
+  				motor[lift] = 127;
+  			else
+  				motor[lift] = 0;
+	  		wait1Msec(5);
+	  	}
+
+	  	motor[intake] =
+	  		motor[lift] =
+	  		0;
+
+			movePid(&lPid, -102); // turn
+			movePid(&rPid, -82);
+
+			while(!lPid.isOnTgt && !rPid.isOnTgt)
+	  		wait1Msec(5);
+
+	  	while(shotCount < 4) { //shoot
+	  		motor[intake] = 127;
+	  		if(flyTbh.isOnTgt)
+	  			motor[lift] = 127;
+	  		wait1Msec(5);
+	  	}
+
+ 			movePid(&lPid, 111); //turn
+	  	movePid(&rPid, 77);
+
+  		while(!lPid.isOnTgt && !rPid.isOnTgt)
+  			wait1Msec(5);
+
+  		movePid(&lPid, -386); //drive straight
+  		movePid(&rPid, 365);
+
+  		while(!lPid.isOnTgt && !rPid.isOnTgt) { //intake
+  			motor[intake] =
+  				127;
+  			if(!SensorValue[leftLim] && !SensorValue[rightLim])
+  				motor[lift] = 127;
+  			else
+  				motor[lift] = 0;
+  			wait1Msec(5);
+  		}
+
+  		motor[intake] =
+  			motor[lift] =
+  			0;
+
+  		movePid(&lPid, -145); //turn
+  		movePid(&rPid, -51);
+
+ 			while(!lPid.isOnTgt && !rPid.isOnTgt)
+ 	 			wait1Msec(5);
+ 	 		while(shotCount < 8) { //shoot
+ 	 			motor[intake] =	127;
+ 	 			if(flyTbh.isOnTgt)
+ 	 				motor[lift] = 127;
+ 	 			else
+ 	 				motor[lift] = 0;
+ 	 		}
+ 		}
+
+ 		else {
+
+ 		}
+ 	}
+
+ 	else {
+ 		if(SensorValue[red]) {
+	  	setPid(&lPid, 915); //drive straight
+  		setPid(&rPid, -890);
+
+  		while(!lPid.isOnTgt && !rPid.isOnTgt)
+  			wait1Msec(5);
+
+			movePid(&lPid, -85); //turn
+			movePid(&rPid, -154);
+
+			while(!lPid.isOnTgt && !rPid.isOnTgt)
+  			wait1Msec(5);
+
+			movePid(&lPid, -338); //drive straight
+			movePid(&rPid, 381);
+
+			while(!lPid.isOnTgt && !rPid.isOnTgt) {
+				motor[intake] =
+  				127;
+  			if(!SensorValue[leftLim] && !SensorValue[rightLim])
+  				motor[lift] = 127;
+  			else
+  				motor[lift] = 0;
+	  		wait1Msec(5);
+	  	}
+
+	  	motor[intake] =
+	  		motor[lift] =
+	  		0;
+
+			movePid(&lPid, 102); // turn
+			movePid(&rPid, 82);
+
+			while(!lPid.isOnTgt && !rPid.isOnTgt)
+	  		wait1Msec(5);
+
+	  	while(shotCount < 4) { //shoot
+	  		motor[intake] =
+  				127;
+  			if(flyTbh.isOnTgt)
+  				motor[lift] = 127;
+  			else
+  				motor[lift] = 0;
+	  		wait1Msec(5);
+	  	}
+
+ 			movePid(&lPid, -111); //turn
+	  	movePid(&rPid, -77);
+
+  		while(!lPid.isOnTgt && !rPid.isOnTgt)
+  			wait1Msec(5);
+
+  		movePid(&lPid, -386); //drive straight
+  		movePid(&rPid, 365);
+
+  		while(!lPid.isOnTgt && !rPid.isOnTgt) { //intake
+  			motor[intake] =
+  				127;
+  			if(!SensorValue[leftLim] && !SensorValue[rightLim])
+  				motor[lift] = 127;
+  			else
+  				motor[lift] = 0;
+  			wait1Msec(5);
+  		}
+
+  		motor[intake] =
+  			motor[lift] =
+  			0;
+
+  		movePid(&lPid, 145); //turn
+  		movePid(&rPid, 51);
+
+ 			while(!lPid.isOnTgt && !rPid.isOnTgt)
+ 	 			wait1Msec(5);
+ 	 		while(shotCount < 8) //shoot
+ 	 			motor[intake] =
+ 	 				motor[lift] =
+ 	 				127;
+		}
+		else {
+
+		}
+	}
+
+  /*
+  Speed for 2nd stack- 2710
+  */
+
+/*#ifdef USE_PRELOAD_AUTON
   block(!(isTbhInThresh(&flyTbh, velThresh) &&
     isTbhDerivInThresh(&flyTbh, accelThresh)));
 
@@ -367,7 +567,7 @@ task auton() {
   }
 #else
   motor[intake] = motor[lift] = 127;
-#endif
+#endif*/
 }
 
 void endAuton() {
@@ -479,11 +679,32 @@ task userOp() {
 
     updateTbhController(&flyCtl, flyPwr[flyDir]);
 
-    motor[intake] =
-      twoWay(INTAKE_FEEDIN_BTN, 127, INTAKE_FEEDOUT_BTN, -127);
+    if (FIRE_BTN) motor[intake] = motor[lift] = 127;
+    else {
+   	  int feedInSpeed = (SensorValue[leftLim] || SensorValue[rightLim]) ? 0 : 127;
 
-    motor[lift] =
-      twoWay(LIFT_RAISE_BTN, 127, LIFT_LOWER_BTN, -127);
+      motor[intake] =
+        twoWay(INTAKE_FEEDIN_BTN, feedInSpeed, INTAKE_FEEDOUT_BTN, -127);
+     	motor[lift] =
+      	twoWay(LIFT_RAISE_BTN, feedInSpeed, LIFT_LOWER_BTN, -127);
+   }
+
+   /*
+   if(FIRE_BTN)
+     	motor[intake] =
+    		motor[lift] =
+    		127;
+   	else {
+   		motor[intake] =
+   			twoWay(INTAKE_FEEDIN_BTN, 127, INTAKE_FEEDOUT_BTN, -127);
+   		if(!(SensorValue[leftLim] || SensorValue[rightLim]) || flyTbh.isOnTgt)
+   			motor[lift] =
+   				twoWay(LIFT_RAISE_BTN, 127, LIFT_LOWER_BTN, -127);
+   		else
+   			motor[lift] = 0;
+   	}
+   	*/
+
 
     if(risingEdge(&saveEncsLatch, SAVE_ENC_BTN) && saveEncs < SAVE_ENC_MAX) {
     	lDrive.encVals[saveEncs] = SensorValue[lDriveEnc];
