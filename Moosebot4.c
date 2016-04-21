@@ -7,8 +7,8 @@
 #pragma config(Sensor, dgtl4,  intakeLed,      sensorLEDtoVCC)
 #pragma config(Sensor, dgtl5,  leftLim,        sensorTouch)
 #pragma config(Sensor, dgtl6,  rightLim,       sensorTouch)
-#pragma config(Sensor, dgtl7,  red,            sensorDigitalIn)
-#pragma config(Sensor, dgtl8,  back,           sensorDigitalIn)
+#pragma config(Sensor, dgtl7,  red,            sensorTouch)
+#pragma config(Sensor, dgtl8,  back,           sensorTouch)
 #pragma config(Sensor, dgtl10, redLed,         sensorLEDtoVCC)
 #pragma config(Sensor, dgtl11, yellowLed,      sensorLEDtoVCC)
 #pragma config(Sensor, dgtl12, greenLed,       sensorLEDtoVCC)
@@ -407,8 +407,11 @@ task auton() {																																			//AUTONOMOUS
   startDrivePids(true);
   startCtlLoop();
 
- 	//if(SensorValue[red]) {
- 	//	if(SensorValue[back]) {
+  setPidDoRun(&lPid, true);
+  setPidDoRun(&rPid, true);
+
+ 	if(SensorValue[red]) {
+ 		if(SensorValue[back]) {
 
  			setTbh(&flyTbh, autonFlyPwr[0]);
 
@@ -585,7 +588,6 @@ task auton() {																																			//AUTONOMOUS
 
 	//	//}
 	//}
-
   /*
   Speed for 2nd stack- 2710
   */
