@@ -68,7 +68,7 @@
 #define DRIVE_LEFT joyAnalog(ChLY, 10)
 #define DRIVE_RIGHT joyAnalog(ChRY, 10)
 
-#define DRIVE_TANK_BTN false
+#define DRIVE_TANK_BTN vexRT[Btn8L]
 #define DRIVE_FLIP_BTN vexRT[Btn8R]
 
 #define FEEDIN_BTN vexRT[Btn6U]
@@ -79,6 +79,8 @@
 
 #define LIFT_RAISE_BTN (FEEDIN_BTN || vexRT[Btn6UXmtr2])
 #define LIFT_LOWER_BTN (FEEDOUT_BTN)
+
+#define FIRE_BTN vexRT[Btn8U]
 
 #define BATT_WARNING_DISMISS (nLCDButtons || vexRT[Btn8D] || (abs(vexRT[AccelY]) > 63)))
 
@@ -136,7 +138,7 @@ const float autonFlyPwr = flyPwr[3];
 
 const float autonFlyPwr[2] = { 2680, 2710 };
 
-ADiff flyDiff, fly2Diff;
+ADiff flyDiff, fly2Diff, lDriveDiff, rDriveDiff;
 RAFlt flyDispFlt, flyDispErrFlt, fly2Flt;
 Tbh flyTbh;
 TbhController flyCtl;
@@ -335,13 +337,15 @@ void init() {
   initRAFlt(&flyDispErrFlt, flyDispErrFltBuf, FLY_DISP_ERR_FLT_LEN);
   initRAFlt(&fly2Flt, flyFltBuf, FLY2_FLT_LEN);
 
-  initPid(&lPid, 0, 0, 0, 0, 0, false);
-  initPid(&rPid, 0, 0, 0, 0, 0, false);
+  initPid(&lPid, 10, .1, .001, .01, 127, false);
+  initPid(&rPid, 10, .1, .001, .01, 127, false);
 }
 
 void updateCtl(float dt) {
   updateDiff(&flyDiff, SensorValue[flyEnc] / 2., dt);
   updateDiff(&fly2Diff, flyDiff.out, dt);
+  updateDiff(&lDriveDiff, SensorValue[lDriveEnc], dt);
+  updateDiff(&rDriveDiff, SensorValue[rDriveEnc], dt);
 
   updateRAFlt(&flyDispFlt, flyDiff.out);
   updateRAFlt(&fly2Flt, fly2Diff.out);
@@ -351,8 +355,8 @@ void updateCtl(float dt) {
     motor[rFly] =
       updateTbh(&flyTbh, flyDiff.out, fly2Flt.out, dt);
 
-  updatePid(&lPid, SensorValue[lDriveEnc], 0, dt);
-  updatePid(&rPid, SensorValue[rDriveEnc], 0, dt);
+  updatePid(&lPid, SensorValue[lDriveEnc], lDriveDiff.out, dt);
+  updatePid(&rPid, SensorValue[rDriveEnc], rDriveDiff.out, dt);
 
   updateRAFlt(&flyDispErrFlt, flyTbh.err);
 
@@ -368,8 +372,8 @@ task auton() {																																			//AUTONOMOUS
   startFlyTbh(false);
   startCtlLoop();
 
- 	if(SensorValue[red]) {
- 		if(SensorValue[back]) {
+ 	//if(SensorValue[red]) {
+ 	//	if(SensorValue[back]) {
 
  			setTbh(&flyTbh, autonFlyPwr[0]);
 
@@ -415,6 +419,8 @@ task auton() {																																			//AUTONOMOUS
 	  		wait1Msec(5);
 	  	}
 
+	  	setTbh(&flyTbh, autonFlyPwr[1]);
+
  			movePid(&lPid, 111); //turn
 	  	movePid(&rPid, 77);
 
@@ -449,97 +455,97 @@ task auton() {																																			//AUTONOMOUS
  	 				motor[lift] = 127;
  	 			else
  	 				motor[lift] = 0;
- 	 		}
- 		}
+ 	// 		}
+ 	//	}
 
- 		else {
+ 	//	else {
 
- 		}
- 	}
+ 	//	}
+ 	//}
 
- 	else {
- 		if(SensorValue[red]) {
-	  	setPid(&lPid, 915); //drive straight
-  		setPid(&rPid, -890);
+ 	////else {
+ 	////	if(SensorValue[red]) {
+	 // 	setPid(&lPid, 915); //drive straight
+  //		setPid(&rPid, -890);
 
-  		while(!lPid.isOnTgt && !rPid.isOnTgt)
-  			wait1Msec(5);
+  //		while(!lPid.isOnTgt && !rPid.isOnTgt)
+  //			wait1Msec(5);
 
-			movePid(&lPid, -85); //turn
-			movePid(&rPid, -154);
+		//	movePid(&lPid, -85); //turn
+		//	movePid(&rPid, -154);
 
-			while(!lPid.isOnTgt && !rPid.isOnTgt)
-  			wait1Msec(5);
+		//	while(!lPid.isOnTgt && !rPid.isOnTgt)
+  //			wait1Msec(5);
 
-			movePid(&lPid, -338); //drive straight
-			movePid(&rPid, 381);
+		//	movePid(&lPid, -338); //drive straight
+		//	movePid(&rPid, 381);
 
-			while(!lPid.isOnTgt && !rPid.isOnTgt) {
-				motor[intake] =
-  				127;
-  			if(!SensorValue[leftLim] && !SensorValue[rightLim])
-  				motor[lift] = 127;
-  			else
-  				motor[lift] = 0;
-	  		wait1Msec(5);
-	  	}
+		//	while(!lPid.isOnTgt && !rPid.isOnTgt) {
+		//		motor[intake] =
+  //				127;
+  //			if(!SensorValue[leftLim] && !SensorValue[rightLim])
+  //				motor[lift] = 127;
+  //			else
+  //				motor[lift] = 0;
+	 // 		wait1Msec(5);
+	 // 	}
 
-	  	motor[intake] =
-	  		motor[lift] =
-	  		0;
+	 // 	motor[intake] =
+	 // 		motor[lift] =
+	 // 		0;
 
-			movePid(&lPid, 102); // turn
-			movePid(&rPid, 82);
+		//	movePid(&lPid, 102); // turn
+		//	movePid(&rPid, 82);
 
-			while(!lPid.isOnTgt && !rPid.isOnTgt)
-	  		wait1Msec(5);
+		//	while(!lPid.isOnTgt && !rPid.isOnTgt)
+	 // 		wait1Msec(5);
 
-	  	while(shotCount < 4) { //shoot
-	  		motor[intake] =
-  				127;
-  			if(flyTbh.isOnTgt)
-  				motor[lift] = 127;
-  			else
-  				motor[lift] = 0;
-	  		wait1Msec(5);
-	  	}
+	 // 	while(shotCount < 4) { //shoot
+	 // 		motor[intake] =
+  //				127;
+  //			if(flyTbh.isOnTgt)
+  //				motor[lift] = 127;
+  //			else
+  //				motor[lift] = 0;
+	 // 		wait1Msec(5);
+	 // 	}
 
- 			movePid(&lPid, -111); //turn
-	  	movePid(&rPid, -77);
+ 	//		movePid(&lPid, -111); //turn
+	 // 	movePid(&rPid, -77);
 
-  		while(!lPid.isOnTgt && !rPid.isOnTgt)
-  			wait1Msec(5);
+  //		while(!lPid.isOnTgt && !rPid.isOnTgt)
+  //			wait1Msec(5);
 
-  		movePid(&lPid, -386); //drive straight
-  		movePid(&rPid, 365);
+  //		movePid(&lPid, -386); //drive straight
+  //		movePid(&rPid, 365);
 
-  		while(!lPid.isOnTgt && !rPid.isOnTgt) { //intake
-  			motor[intake] =
-  				127;
-  			if(!SensorValue[leftLim] && !SensorValue[rightLim])
-  				motor[lift] = 127;
-  			else
-  				motor[lift] = 0;
-  			wait1Msec(5);
-  		}
+  //		while(!lPid.isOnTgt && !rPid.isOnTgt) { //intake
+  //			motor[intake] =
+  //				127;
+  //			if(!SensorValue[leftLim] && !SensorValue[rightLim])
+  //				motor[lift] = 127;
+  //			else
+  //				motor[lift] = 0;
+  //			wait1Msec(5);
+  //		}
 
-  		motor[intake] =
-  			motor[lift] =
-  			0;
+  //		motor[intake] =
+  //			motor[lift] =
+  //			0;
 
-  		movePid(&lPid, 145); //turn
-  		movePid(&rPid, 51);
+  //		movePid(&lPid, 145); //turn
+  //		movePid(&rPid, 51);
 
- 			while(!lPid.isOnTgt && !rPid.isOnTgt)
- 	 			wait1Msec(5);
- 	 		while(shotCount < 8) //shoot
- 	 			motor[intake] =
- 	 				motor[lift] =
- 	 				127;
-		}
-		else {
+ 	//		while(!lPid.isOnTgt && !rPid.isOnTgt)
+ 	// 			wait1Msec(5);
+ 	// 		while(shotCount < 8) //shoot
+ 	// 			motor[intake] =
+ 	// 				motor[lift] =
+ 	// 				127;
+	//	//}
+	//	//else {
 
-		}
+	//	//}
 	}
 
   /*
@@ -677,14 +683,15 @@ task userOp() {
 
     updateTbhController(&flyCtl, flyPwr[flyDir]);
 
-    motor[intake] =
-      twoWay(INTAKE_FEEDIN_BTN, 127, INTAKE_FEEDOUT_BTN, -127);
-		if(!SensorValue[leftLim] && !SensorValue[rightLim])
-    	motor[lift] =
-      	twoWay(LIFT_RAISE_BTN, 127, LIFT_LOWER_BTN, -127);
-    else
-    	motor[lift] =
-   			twoWay(LIFT_RAISE_BTN, 0, LIFT_LOWER_BTN, -127);
+    if (FIRE_BTN) motor[intake] = motor[lift] = 127;
+    else {
+   	  int feedInSpeed = (!flyTbh.isOnTgt && (SensorValue[leftLim] || SensorValue[rightLim])) ? 0 : 127;
+
+      motor[intake] =
+        twoWay(INTAKE_FEEDIN_BTN, 127, INTAKE_FEEDOUT_BTN, -127);
+     	motor[lift] =
+      	twoWay(LIFT_RAISE_BTN, feedInSpeed, LIFT_LOWER_BTN, -127);
+   }
 
     if(risingEdge(&saveEncsLatch, SAVE_ENC_BTN) && saveEncs < SAVE_ENC_MAX) {
     	lDrive.encVals[saveEncs] = SensorValue[lDriveEnc];
