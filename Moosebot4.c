@@ -2,9 +2,10 @@
 #pragma config(UART_Usage, UART2, uartNotUsed, baudRate4800, IOPins, None, None)
 #pragma config(Sensor, in1,    expndStatus,    sensorAnalog)
 #pragma config(Sensor, dgtl1,  flyEnc,         sensorQuadEncoder)
-#pragma config(Sensor, dgtl3,  redLed,         sensorLEDtoVCC)
-#pragma config(Sensor, dgtl4,  yellowLed,      sensorLEDtoVCC)
-#pragma config(Sensor, dgtl5,  greenLed,       sensorLEDtoVCC)
+#pragma config(Sensor, dgtl3,  frontLeds,      sensorLEDtoVCC)
+#pragma config(Sensor, dgtl4,  backLeds,       sensorLEDtoVCC)
+#pragma config(Sensor, dgtl5,  inLeftLim,      sensorTouch)
+#pragma config(Sensor, dgtl6,  inRightLim,     sensorTouch)
 #pragma config(Motor,  port1,           lift,          tmotorVex393TurboSpeed_HBridge, openLoop, reversed)
 #pragma config(Motor,  port2,           brWheel,       tmotorVex393TurboSpeed_MC29, openLoop, reversed)
 #pragma config(Motor,  port3,           mrWheel,       tmotorVex393TurboSpeed_MC29, openLoop, reversed)
@@ -125,7 +126,6 @@ task lcd() {
 
   bool battWarning = false,
     flash = false,
-    flashLeds,
     forceBattWarning = true,
     pwrBtnsDown,
     pwrBtnsDelayed,
@@ -141,31 +141,9 @@ task lcd() {
     time = nSysTime;
     battWarning = nImmediateBatteryLevel < battThresh || BackupBatteryLevel < battThresh || SensorValue[expndStatus];
 
-    if (flyTbh.doRun) {
-      flashLeds = false;
-
-      SensorValue[redLed] =
-        SensorValue[yellowLed] =
-        SensorValue[greenLed] = 0;
-
-      if (fabs(flyDispErrFlt.out) <= velThresh) {
-        if (fabs(fly2Flt.out) <= accelThresh) SensorValue[greenLed] = 1;
-        else  SensorValue[yellowLed] = 1;
-      }
-      else SensorValue[redLed] = 1;
-    }
-    else if (battWarning) {
-      if ((time - flashTs) >= 500) {
-        flash = !flash;
-        flashTs = time;
-      }
-
-      flashLeds = true;
-    }
-    else {
-      SensorValue[redLed] =
-        SensorValue[yellowLed] =
-        SensorValue[greenLed] = 0;
+    if (!flyTbh.doRun && battWarning && (time - flashTs) >= 500) {
+      flash = !flash;
+      flashTs = time;
     }
 
     clearLCD();
@@ -260,11 +238,8 @@ task lcd() {
       }
     }
 
-    if (flashLeds) {
-      SensorValue[redLed] =
-        SensorValue[yellowLed] =
-        SensorValue[greenLed] = flash;
-    }
+    SensorValue[frontLeds] = SensorValue[backLeds] =
+      SensorValue[inLeftLim] || SensorValue[inRightLim];
 
     wait1Msec(20);
   }
