@@ -7,8 +7,8 @@
 #pragma config(Sensor, dgtl4,  intakeLed,      sensorLEDtoVCC)
 #pragma config(Sensor, dgtl5,  leftLim,        sensorTouch)
 #pragma config(Sensor, dgtl6,  rightLim,       sensorTouch)
-#pragma config(Sensor, dgtl7,  red,            sensorDigitalIn)
-#pragma config(Sensor, dgtl8,  back,           sensorDigitalIn)
+#pragma config(Sensor, dgtl7,  red,            sensorTouch)
+#pragma config(Sensor, dgtl8,  back,           sensorTouch)
 #pragma config(Sensor, dgtl10, redLed,         sensorLEDtoVCC)
 #pragma config(Sensor, dgtl11, yellowLed,      sensorLEDtoVCC)
 #pragma config(Sensor, dgtl12, greenLed,       sensorLEDtoVCC)
@@ -337,8 +337,8 @@ void init() {
   initRAFlt(&flyDispErrFlt, flyDispErrFltBuf, FLY_DISP_ERR_FLT_LEN);
   initRAFlt(&fly2Flt, flyFltBuf, FLY2_FLT_LEN);
 
-  initPid(&lPid, 10, .1, .001, .01, 127, false);
-  initPid(&rPid, 10, .1, .001, .01, 127, false);
+  initPid(&lPid, 10, 1, .001, .01, 127, false);
+  initPid(&rPid, 10, 1, .001, .01, 127, false);
 }
 
 void updateCtl(float dt) {
@@ -372,8 +372,11 @@ task auton() {																																			//AUTONOMOUS
   startFlyTbh(false);
   startCtlLoop();
 
- 	//if(SensorValue[red]) {
- 	//	if(SensorValue[back]) {
+  setPidDoRun(&lPid, true);
+  setPidDoRun(&rPid, true);
+
+ 	if(SensorValue[red]) {
+ 		if(SensorValue[back]) {
 
  			setTbh(&flyTbh, autonFlyPwr[0]);
 
@@ -455,97 +458,102 @@ task auton() {																																			//AUTONOMOUS
  	 				motor[lift] = 127;
  	 			else
  	 				motor[lift] = 0;
- 	// 		}
- 	//	}
+ 	 		}
+ 		}
 
- 	//	else {
+ 		else {
 
- 	//	}
- 	//}
+ 		}
+ 	}
 
- 	////else {
- 	////	if(SensorValue[red]) {
-	 // 	setPid(&lPid, 915); //drive straight
-  //		setPid(&rPid, -890);
+ 	else {
+ 		if(SensorValue[back]) {
 
-  //		while(!lPid.isOnTgt && !rPid.isOnTgt)
-  //			wait1Msec(5);
+ 			setTbh(&flyTbh, autonFlyPwr[0]);
 
-		//	movePid(&lPid, -85); //turn
-		//	movePid(&rPid, -154);
+	  	setPid(&lPid, 915); //drive straight
+  		setPid(&rPid, -890);
 
-		//	while(!lPid.isOnTgt && !rPid.isOnTgt)
-  //			wait1Msec(5);
+  		while(!lPid.isOnTgt && !rPid.isOnTgt)
+  			wait1Msec(5);
 
-		//	movePid(&lPid, -338); //drive straight
-		//	movePid(&rPid, 381);
+			movePid(&lPid, -85); //turn
+			movePid(&rPid, -154);
 
-		//	while(!lPid.isOnTgt && !rPid.isOnTgt) {
-		//		motor[intake] =
-  //				127;
-  //			if(!SensorValue[leftLim] && !SensorValue[rightLim])
-  //				motor[lift] = 127;
-  //			else
-  //				motor[lift] = 0;
-	 // 		wait1Msec(5);
-	 // 	}
+			while(!lPid.isOnTgt && !rPid.isOnTgt)
+  			wait1Msec(5);
 
-	 // 	motor[intake] =
-	 // 		motor[lift] =
-	 // 		0;
+			movePid(&lPid, -338); //drive straight
+			movePid(&rPid, 381);
 
-		//	movePid(&lPid, 102); // turn
-		//	movePid(&rPid, 82);
+			while(!lPid.isOnTgt && !rPid.isOnTgt) {
+				motor[intake] =
+  				127;
+  			if(!SensorValue[leftLim] && !SensorValue[rightLim])
+  				motor[lift] = 127;
+  			else
+  				motor[lift] = 0;
+	  		wait1Msec(5);
+	  	}
 
-		//	while(!lPid.isOnTgt && !rPid.isOnTgt)
-	 // 		wait1Msec(5);
+	  	motor[intake] =
+	  		motor[lift] =
+	  		0;
 
-	 // 	while(shotCount < 4) { //shoot
-	 // 		motor[intake] =
-  //				127;
-  //			if(flyTbh.isOnTgt)
-  //				motor[lift] = 127;
-  //			else
-  //				motor[lift] = 0;
-	 // 		wait1Msec(5);
-	 // 	}
+			movePid(&lPid, 102); // turn
+			movePid(&rPid, 82);
 
- 	//		movePid(&lPid, -111); //turn
-	 // 	movePid(&rPid, -77);
+			while(!lPid.isOnTgt && !rPid.isOnTgt)
+	  		wait1Msec(5);
 
-  //		while(!lPid.isOnTgt && !rPid.isOnTgt)
-  //			wait1Msec(5);
+	  	while(shotCount < 4) { //shoot
+	  		motor[intake] =
+  				127;
+  			if(flyTbh.isOnTgt)
+  				motor[lift] = 127;
+  			else
+  				motor[lift] = 0;
+	  		wait1Msec(5);
+	  	}
 
-  //		movePid(&lPid, -386); //drive straight
-  //		movePid(&rPid, 365);
+	  	setTbh(&flyTbh, autonFlyPwr[1]);
 
-  //		while(!lPid.isOnTgt && !rPid.isOnTgt) { //intake
-  //			motor[intake] =
-  //				127;
-  //			if(!SensorValue[leftLim] && !SensorValue[rightLim])
-  //				motor[lift] = 127;
-  //			else
-  //				motor[lift] = 0;
-  //			wait1Msec(5);
-  //		}
+ 			movePid(&lPid, -111); //turn
+	  	movePid(&rPid, -77);
 
-  //		motor[intake] =
-  //			motor[lift] =
-  //			0;
+  		while(!lPid.isOnTgt && !rPid.isOnTgt)
+  			wait1Msec(5);
 
-  //		movePid(&lPid, 145); //turn
-  //		movePid(&rPid, 51);
+  		movePid(&lPid, -386); //drive straight
+  		movePid(&rPid, 365);
 
- 	//		while(!lPid.isOnTgt && !rPid.isOnTgt)
- 	// 			wait1Msec(5);
- 	// 		while(shotCount < 8) //shoot
- 	// 			motor[intake] =
- 	// 				motor[lift] =
- 	// 				127;
-	//	//}
-	//	//else {
+  		while(!lPid.isOnTgt && !rPid.isOnTgt) { //intake
+  			motor[intake] =
+  				127;
+  			if(!SensorValue[leftLim] && !SensorValue[rightLim])
+  				motor[lift] = 127;
+  			else
+  				motor[lift] = 0;
+  			wait1Msec(5);
+  		}
 
-	//	//}
+  		motor[intake] =
+  			motor[lift] =
+  			0;
+
+  		movePid(&lPid, 145); //turn
+  		movePid(&rPid, 51);
+
+ 			while(!lPid.isOnTgt && !rPid.isOnTgt)
+ 	 			wait1Msec(5);
+ 	 		while(shotCount < 8) //shoot
+ 	 			motor[intake] =
+ 	 				motor[lift] =
+ 	 				127;
+		}
+		else {
+
+		}
 	}
 
   /*
