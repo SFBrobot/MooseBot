@@ -85,6 +85,8 @@
 
 #include "rkUtil/lib.h"
 
+#include "rkUtil/floatDlog.h"
+
 #include "rkLogic/dlatch.h"
 
 #include "rkLcd/lib.h"
@@ -131,6 +133,7 @@ TbhController flyCtl;
 task lcd() {
   const float flyPwrIncrement = 20;
   const word battThresh = 7200;
+  const int expndThresh = (int)round(battThresh * expanderStatusDivisor);
   const long pwrBtnsDelayInterval = 250,
     pwrBtnsRepeatInterval = 100,
     dispPwrTimeout = 1000;
@@ -151,7 +154,7 @@ task lcd() {
 
   while (true) {
     time = nSysTime;
-    battWarning = nImmediateBatteryLevel < battThresh || BackupBatteryLevel < battThresh;
+    battWarning = nImmediateBatteryLevel < battThresh || BackupBatteryLevel < battThresh || SensorValue[expndStatus];
 
     if (flyTbh.doRun) {
       flashLeds = false;
@@ -312,7 +315,7 @@ float flyDispFltBuf[FLY_DISP_FLT_LEN],
 void init() {
   ctlLoopInterval = 50;
 
-  initTbh(&flyTbh, 0, .1, .001, .0005, 127, true);
+  initTbh(&flyTbh, 0, .025, .01, .001, 127, true);
 
   initTbhController(&flyCtl, &flyTbh, false);
 
@@ -328,9 +331,17 @@ void updateCtl(float dt) {
   updateRAFlt(&flyDispFlt, flyDiff.out);
   updateRAFlt(&fly2Flt, fly2Diff.out);
 
-  if (flyTbh.doUpdate)
+  if (flyTbh.doUpdate) {
     motor[lFly] = motor[rFly] =
       updateTbh(&flyTbh, flyDiff.out, fly2Flt.out, dt);
+
+    datalogDataGroupStart();
+    datalogAddFloat(0, flyDispFlt.out);
+    datalogAddFloat(1, fly2Flt.out);
+    datalogAddFloat(2, flyTbh.out);
+    datalogAddFloat(3, flyTbh.setpoint);
+    datalogDataGroupEnd();
+  }
 
   updateRAFlt(&flyDispErrFlt, flyTbh.err);
 }
