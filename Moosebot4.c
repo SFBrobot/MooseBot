@@ -363,8 +363,8 @@ void init() {
   initRAFlt(&flyDispErrFlt, flyDispErrFltBuf, FLY_DISP_ERR_FLT_LEN);
   initRAFlt(&fly2Flt, flyFltBuf, FLY2_FLT_LEN);
 
-  //initPid(&lPid, 10, .1, .05, .05, 127, false);
-  //initPid(&rPid, 10, .1, .05, .05, 127, false);
+  initPid(&lPid, 10, .1, .05, .05, 127, false);
+  initPid(&rPid, 10, .1, .05, .05, 127, false);
 }
 
 void updateCtl(float dt) {
