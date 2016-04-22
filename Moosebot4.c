@@ -155,7 +155,7 @@ task lcd() {
     dispPwrTimeout = 1000;
 
   bool battWarning = false,
-    flash = false,
+    flash = false, flashLeds,
     forceBattWarning = true,
     pwrBtnsDown,
     pwrBtnsDelayed,
