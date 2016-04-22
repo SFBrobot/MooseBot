@@ -105,7 +105,7 @@ const float velThresh = 20,
   driveFacRange = 1 - driveFacOffs,
   masterDriveFacOffs = .75,
   masterDriveFacRange = 1 - masterDriveFacOffs,
-  slewRate = 7;
+  slewRate = 15;
 
 #if PGM_MODE == MODE_SKILLS_PGM
 const float autonFlyPwr = flyPwr[2];
