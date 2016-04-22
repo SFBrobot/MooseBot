@@ -334,7 +334,7 @@ void init() {
   initRAFlt(&flyDispFlt, flyDispFltBuf, FLY_DISP_FLT_LEN);
   initRAFlt(&flyDispErrFlt, flyDispErrFltBuf, FLY_DISP_ERR_FLT_LEN);
   initRAFlt(&fly2Flt, flyFltBuf, FLY2_FLT_LEN);
-  
+
   initSLim(&olDrive, slewRate);
   initSLim(&orDrive, slewRate);
   initSLim(&mlDrive, slewRate);
@@ -434,7 +434,6 @@ task userOp() {
   resetDLatch(&flyMRLatch2, 0);
   resetDLatch(&flySRLatch2, 0);
   resetDLatch(&flyOffLatch2, 0);
-  resetDLatch(&saveEncsLatch, 0);
 
   word mMid, mSide, sMid, sSide;
   float fMid, fSide, fMidFac, fSideFac, fMMid, fMSide, fSMid, fSSide;
