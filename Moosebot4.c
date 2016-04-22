@@ -82,6 +82,7 @@
 #include "rkControl/rollAvg.h"
 #include "rkControl/tbh.h"
 #include "rkControl/tbhController.h"
+#include "rkControl/slewLim.h"
 
 #include "rkCompetition/lib.h"
 
@@ -103,18 +104,20 @@ const float velThresh = 20,
   driveFacOffs = .25,
   driveFacRange = 1 - driveFacOffs,
   masterDriveFacOffs = .75,
-  masterDriveFacRange = 1 - masterDriveFacOffs;
+  masterDriveFacRange = 1 - masterDriveFacOffs,
+  slewRate = 7;
 
 #if PGM_MODE == MODE_SKILLS_PGM
-const float autonFlyPwr = 650;
+const float autonFlyPwr = flyPwr[2];
 #else
-const float autonFlyPwr = 820;
+const float autonFlyPwr = flyPwr[3];
 #endif
 
 ADiff flyDiff, fly2Diff;
 RAFlt flyDispFlt, flyDispErrFlt, fly2Flt;
 Tbh flyTbh;
 TbhController flyCtl;
+SLim olDrive, orDrive, mlDrive, mrDrive;
 
 task lcd() {
   const float flyPwrIncrement = 20;
@@ -282,6 +285,11 @@ void init() {
   initRAFlt(&flyDispFlt, flyDispFltBuf, FLY_DISP_FLT_LEN);
   initRAFlt(&flyDispErrFlt, flyDispErrFltBuf, FLY_DISP_ERR_FLT_LEN);
   initRAFlt(&fly2Flt, flyFltBuf, FLY2_FLT_LEN);
+
+  initSLim(&olDrive, slewRate);
+  initSLim(&orDrive, slewRate);
+  initSLim(&mlDrive, slewRate);
+  initSLim(&mrDrive, slewRate);
 }
 
 void updateCtl(float dt) {
@@ -403,11 +411,11 @@ task userOp() {
 	  mMid = (word)round(fMMid);
 	  mSide = (word)round(fMSide);
 
-    motor[flWheel] = motor[blWheel] = arcadeLeft(sSide, sMid, flipLatch.out);
-    motor[mlWheel] = arcadeLeft(mSide, mMid, flipLatch.out);
+    motor[flWheel] = motor[blWheel] = setSLim(&olDrive, arcadeLeft(sSide, sMid, flipLatch.out));
+    motor[mlWheel] = setSLim(&mlDrive, arcadeLeft(mSide, mMid, flipLatch.out));
 
-    motor[frWheel] = motor[brWheel] = arcadeRight(sSide, sMid, flipLatch.out);
-    motor[mrWheel] = arcadeRight(mSide, mMid, flipLatch.out);
+    motor[frWheel] = motor[brWheel] = setSLim(&orDrive, arcadeRight(sSide, sMid, flipLatch.out));
+    motor[mrWheel] = setSLim(&mrDrive, arcadeRight(mSide, mMid, flipLatch.out));
 
     if (risingEdge(&flipDownLatch, DRIVE_FLIP_BTN)) {
       clearSounds();
