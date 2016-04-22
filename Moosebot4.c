@@ -109,12 +109,12 @@ const string pgmModes[] = {
 #define USE_PRELOAD_AUTON //Comment to start the intake immediately in auton
 
 typedef struct {
-	int encVals[SAVE_ENC_MAX],
-		deltaEnc[SAVE_ENC_MAX];
+  int encVals[SAVE_ENC_MAX],
+    deltaEnc[SAVE_ENC_MAX];
 } DriveEnc;
 
 int flyDir,
-	shotCount = 0;
+  shotCount = 0;
 
 float flyPwr[4] = { 0, 1920, 2435, 2860 };
 
@@ -201,10 +201,10 @@ task lcd() {
     clearLCD();
 
     if ((time - startTs) <= 3000) {
-		  bLCDBacklight = true;
+      bLCDBacklight = true;
 
-		  displayLCDCenteredString(0, "Program Mode:");
-		  displayLCDCenteredString(1, pgmModes[PGM_MODE]);
+      displayLCDCenteredString(0, "Program Mode:");
+      displayLCDCenteredString(1, pgmModes[PGM_MODE]);
     }
     else if (nLCDButtons & kButtonCenter) {
       bLCDBacklight = true;
@@ -403,7 +403,7 @@ void updateCtl(float dt) {
   updateRAFlt(&flyDispErrFlt, flyTbh.err);
 
   if(motor[lift] >= 0 && fallingEdge(&ballShot, (SensorValue[leftLim] || SensorValue[rightLim])))
-  	shotCount++;
+    shotCount++;
 }
 
 #define DRIVE_OFF_TARGET !(lPid.isOnTgt && rPid.isOnTgt)
@@ -498,10 +498,10 @@ task userOp() {
     fMMid = fMid * (masterDriveFacOffs + fMidFac * masterDriveFacRange);
     fMSide = fSide * (masterDriveFacOffs + fSideFac * masterDriveFacRange);
 
-	  sMid = (word)round(fSMid);
-	  sSide = (word)round(fSSide);
-	  mMid = (word)round(fMMid);
-	  mSide = (word)round(fMSide);
+    sMid = (word)round(fSMid);
+    sSide = (word)round(fSSide);
+    mMid = (word)round(fMMid);
+    mSide = (word)round(fMSide);
 
     motor[flWheel] = motor[blWheel] = arcadeLeft(sSide, sMid, flipLatch.out);
     motor[mlWheel] = arcadeLeft(mSide, mMid, flipLatch.out);
@@ -541,12 +541,12 @@ task userOp() {
 
     if (FIRE_BTN) motor[intake] = motor[lift] = 127;
     else {
-   	  int feedInSpeed = (isTbhInThresh(&flyTbh, velThresh) || !(SensorValue[leftLim] || SensorValue[rightLim])) ? 127 : 0;
+      int feedInSpeed = (isTbhInThresh(&flyTbh, velThresh) || !(SensorValue[leftLim] || SensorValue[rightLim])) ? 127 : 0;
 
       motor[intake] =
         twoWay(INTAKE_FEEDIN_BTN, 127, INTAKE_FEEDOUT_BTN, -127);
-     	motor[lift] =
-      	twoWay(LIFT_RAISE_BTN, feedInSpeed, LIFT_LOWER_BTN, -127);
+      motor[lift] =
+        twoWay(LIFT_RAISE_BTN, feedInSpeed, LIFT_LOWER_BTN, -127);
    }
 
     //if(risingEdge(&saveEncsLatch, SAVE_ENC_BTN) && saveEncs < SAVE_ENC_MAX) {
