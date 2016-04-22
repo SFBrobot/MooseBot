@@ -108,11 +108,6 @@ const string pgmModes[] = {
 
 #define USE_PRELOAD_AUTON //Comment to start the intake immediately in auton
 
-typedef struct {
-  int encVals[SAVE_ENC_MAX],
-    deltaEnc[SAVE_ENC_MAX];
-} DriveEnc;
-
 int flyDir,
   shotCount = 0;
 
@@ -318,29 +313,29 @@ void startFlyTbh(bool useCtl) {
   SensorValue[flyEnc] = 0;
 }
 
-void startDrivePids(bool resetEncs) {
-  if (resetEncs) {
-    SensorValue[lDriveEnc] =
-    SensorValue[rDriveEnc] = 0;
-  }
+//void startDrivePids(bool resetEncs) {
+//  if (resetEncs) {
+//    SensorValue[lDriveEnc] =
+//    SensorValue[rDriveEnc] = 0;
+//  }
 
-  float lEnc = SensorValue[lDriveEnc],
-    rEnc = -SensorValue[rDriveEnc];
+//  float lEnc = SensorValue[lDriveEnc],
+//    rEnc = -SensorValue[rDriveEnc];
 
-  resetPid(&lPid, lEnc);
-  resetPid(&rPid, rEnc);
+//  resetPid(&lPid, lEnc);
+//  resetPid(&rPid, rEnc);
 
-  resetDiff(&lDriveDiff, lEnc);
-  resetDiff(&rDriveDiff, rEnc);
+//  resetDiff(&lDriveDiff, lEnc);
+//  resetDiff(&rDriveDiff, rEnc);
 
-  setPidDoRun(&lPid, true);
-  setPidDoRun(&rPid, true);
-}
+//  setPidDoRun(&lPid, true);
+//  setPidDoRun(&rPid, true);
+//}
 
 void stopCtls() {
   setTbhDoRun(&flyTbh, false);
-  setPidDoRun(&lPid, false);
-  setPidDoRun(&rPid, false);
+  //setPidDoRun(&lPid, false);
+  //setPidDoRun(&rPid, false);
 
   stopCtlLoop();
 }
@@ -388,6 +383,7 @@ void updateCtl(float dt) {
     datalogAddFloat(3, flyTbh.setpoint);
     datalogDataGroupEnd();
   }
+
   //if (lPid.doUpdate)
   //  motor[blWheel] =
   //  motor[mlWheel] =
@@ -453,8 +449,7 @@ task userOp() {
     flyLRLatch2,
     flyMRLatch2,
     flySRLatch2,
-    flyOffLatch2,
-    saveEncsLatch;
+    flyOffLatch2;
 
   static int saveEncs = 0;
 
@@ -469,7 +464,6 @@ task userOp() {
   resetDLatch(&flyMRLatch2, 0);
   resetDLatch(&flySRLatch2, 0);
   resetDLatch(&flyOffLatch2, 0);
-  resetDLatch(&saveEncsLatch, 0);
 
   word mMid, mSide, sMid, sSide;
   float fMid, fSide, fMidFac, fSideFac, fMMid, fMSide, fSMid, fSSide;
@@ -548,15 +542,6 @@ task userOp() {
       motor[lift] =
         twoWay(LIFT_RAISE_BTN, feedInSpeed, LIFT_LOWER_BTN, -127);
    }
-
-    //if(risingEdge(&saveEncsLatch, SAVE_ENC_BTN) && saveEncs < SAVE_ENC_MAX) {
-    //	lDrive.encVals[saveEncs] = SensorValue[lDriveEnc];
-    //	rDrive.encVals[saveEncs] = SensorValue[rDriveEnc];
-    //	lDrive.deltaEnc[saveEncs] = (saveEncs > 0) ? (lDrive.encVals[saveEncs] - lDrive.encVals[saveEncs-1]) : 0;
-    //	rDrive.deltaEnc[saveEncs] = (saveEncs > 0) ? (rDrive.encVals[saveEncs] - rDrive.encVals[saveEncs-1]) : 0;
-    //	saveEncs++;
-    //}
-
 
     wait1Msec(25);
   }
